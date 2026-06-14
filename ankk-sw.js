@@ -5,7 +5,9 @@ const CACHE_NAME    = `ankk-cache-${CACHE_VERSION}`;
 
 const ASSETS = [
     './index.html',
-    './ankk-manifest.json'
+    './ankk-manifest.json',
+    './icon-192.png',
+    './icon-512.png'
 ];
 
 // ── Install — cache core assets ───────────────────────────────────

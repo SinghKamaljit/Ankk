@@ -9,15 +9,15 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='192' height='192' viewBox='0 0 192 192'><rect width='192' height='192' rx='38' fill='%231a1610'/><rect width='192' height='192' rx='38' fill='url(%23g)' opacity='0.18'/><defs><radialGradient id='g' cx='50%25' cy='40%25' r='55%25'><stop offset='0%25' stop-color='%23c9a84c' stop-opacity='0.5'/><stop offset='100%25' stop-color='%231a1610' stop-opacity='0'/></radialGradient></defs><text x='96' y='138' font-size='108' font-family='serif' text-anchor='middle' fill='%23c9a84c'>ਅ</text></svg>",
+      "src": "icon-192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='512' height='512' viewBox='0 0 512 512'><rect width='512' height='512' rx='100' fill='%231a1610'/><rect width='512' height='512' rx='100' fill='url(%23g)' opacity='0.18'/><defs><radialGradient id='g' cx='50%25' cy='40%25' r='55%25'><stop offset='0%25' stop-color='%23c9a84c' stop-opacity='0.5'/><stop offset='100%25' stop-color='%231a1610' stop-opacity='0'/></radialGradient></defs><text x='256' y='368' font-size='290' font-family='serif' text-anchor='middle' fill='%23c9a84c'>ਅ</text></svg>",
+      "src": "icon-512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]
