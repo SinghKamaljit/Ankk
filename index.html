@@ -718,7 +718,7 @@
     function buildCode(prefix, recipientName, amount) {
         const d         = new Date();
         const dateBlock = pad2(d.getDate()) + pad2(d.getMonth() + 1);
-        const ni        = Math.floor(Math.random() * NONCES.length);
+        const ni        = Math.floor(Math.random() * 16);  // max 16 so hex is always 1 char (0-f)
         const niHex     = ni.toString(16).toUpperCase();
         const encoded   = cipher(amount.toString().padStart(5, '0'), ni + 3, false);
         const sSig      = sig(profile.name);
