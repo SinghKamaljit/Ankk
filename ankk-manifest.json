@@ -2,7 +2,7 @@
   "name": "Ankk · ਅੰਕ",
   "short_name": "Ankk",
   "description": "Recognition of Sincerity — a community record of giving and receiving.",
-  "start_url": "./ankk.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#1a1610",
   "theme_color": "#1a1610",

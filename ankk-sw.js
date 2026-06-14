@@ -4,7 +4,7 @@ const CACHE_VERSION = 'ankk-v2';
 const CACHE_NAME    = `ankk-cache-${CACHE_VERSION}`;
 
 const ASSETS = [
-    './ankk.html',
+    './index.html',
     './ankk-manifest.json'
 ];
 
