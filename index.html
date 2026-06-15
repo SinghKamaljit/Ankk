@@ -219,6 +219,33 @@
         .toast.show { transform: translateX(-50%) translateY(0); }
         .section-head { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px; }
         .sep { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+        /* ── Phone Prompt ── */
+        .phone-prompt {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.92);
+            display: none; justify-content: center; align-items: center;
+            z-index: 1000; padding: 20px;
+        }
+        .phone-prompt.open { display: flex; }
+        .phone-box {
+            width: 100%; max-width: 320px; background: var(--card);
+            border: 1px solid var(--gold); border-radius: 16px; padding: 26px; text-align: center;
+        }
+        .phone-seal  { font-size: 32px; margin-bottom: 12px; }
+        .phone-title { font-size: 15px; font-weight: 700; color: var(--gold); margin-bottom: 8px; }
+        .phone-sub   { font-size: 12px; color: var(--muted); margin-bottom: 18px; line-height: 1.6; }
+
+        /* ── Admin Tx Ledger ── */
+        .atx-item {
+            background: var(--input); border-radius: 10px;
+            padding: 10px 12px; margin-bottom: 7px;
+            border-left: 3px solid var(--gold);
+            font-size: 12px;
+        }
+        .atx-top  { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+        .atx-name { font-weight: 700; color: var(--cream); }
+        .atx-amt  { font-weight: 800; color: var(--gold); }
+        .atx-meta { color: var(--muted); font-size: 10px; line-height: 1.5; }
         .mt10 { margin-top: 10px; }
     </style>
 </head>
@@ -265,6 +292,7 @@
         <div class="tab-btn" onclick="goTab('passbook')">Passbook</div>
         <div class="tab-btn" onclick="goTab('certificate')">Certificate</div>
         <div class="tab-btn" onclick="goTab('save')">Save</div>
+        <div class="tab-btn" onclick="goTab('restore')">Restore</div>
     </div>
 
     <!-- TAB: GIVE -->
@@ -353,20 +381,42 @@
             </div>
         </div>
 
-        <div class="save-divider">— Edit Profile —</div>
-        <div class="field">
-            <label class="field-label">Update Your Display Name</label>
-            <input type="text" id="editName" class="field-input" placeholder="Enter your full name">
+        <div style="margin-top:16px;padding:12px 14px;background:var(--input);border-radius:12px;font-size:12px;color:var(--muted);line-height:1.7;">
+            ℹ️ To restore your record — use the <strong style="color:var(--gold);">Restore</strong> tab.
         </div>
-        <button class="btn btn-muted" onclick="saveName()">Save Name</button>
+    </div>
 
-        <div class="save-divider">— Restore from Backup File —</div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.6;">
-            Paste the text from a previously saved backup file.
+    <!-- TAB: RESTORE -->
+    <div id="tab-restore" class="tab-pane">
+        <div class="section-head">Restore Your Record</div>
+
+        <!-- Cloud Restore -->
+        <div class="save-row" onclick="restoreFromCloud()" style="border-color:var(--gold);background:var(--gold-dim);">
+            <div class="save-icon">☁️</div>
+            <div>
+                <div class="save-label" style="color:var(--gold);">Restore from Cloud</div>
+                <div class="save-sub">Pulls your full record from Firebase.<br>Requires internet. Use if you previously synced.</div>
+            </div>
         </div>
-        <textarea id="restoreInput" class="restore-area" rows="4"
-            placeholder="Paste backup text here…"></textarea>
-        <button class="btn btn-muted" onclick="doRestore()">Restore from File</button>
+
+        <!-- File / Text Restore -->
+        <div style="margin-top:4px;">
+            <div class="save-row" onclick="document.getElementById('restoreInput').focus()">
+                <div class="save-icon">📋</div>
+                <div>
+                    <div class="save-label">Restore from Backup Text</div>
+                    <div class="save-sub">Paste the ANKK: code from your saved backup. Works offline.</div>
+                </div>
+            </div>
+            <textarea id="restoreInput" class="restore-area" rows="4"
+                placeholder="Paste your ANKK: backup code here…"></textarea>
+            <button class="btn btn-muted" onclick="doRestore()">Restore from Text</button>
+        </div>
+
+        <div style="margin-top:18px;padding:14px;background:var(--input);border-radius:12px;font-size:12px;color:var(--muted);line-height:1.7;">
+            ℹ️ Restore brings back your <strong style="color:var(--cream);">balance</strong> and last <strong style="color:var(--cream);">10 entries</strong> of your passbook.<br><br>
+            For full history — use Cloud Restore if you have synced before.
+        </div>
     </div>
 
     <!-- TAB: ADMIN (injected only for admin wallet) -->
@@ -404,9 +454,34 @@
             <div class="result-hint">Write this down or print it. Keep it private.</div>
             <div class="code-block" id="masterCode" style="color:var(--gold);font-size:11px;letter-spacing:0;word-break:break-all;">—</div>
         </div>
+        <hr class="sep">
+        <div class="section-head">Network Transaction Ledger</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.5;">
+            Last 500 transactions across the network. Pulled from cloud.
+        </div>
+        <button class="btn btn-muted" onclick="loadAdminTx()" style="margin-bottom:12px;">Load Network Ledger</button>
+        <div id="adminTxList"></div>
     </div>
 
 </div><!-- end .shell -->
+
+<!-- Phone Prompt Modal -->
+<div class="phone-prompt" id="phonePrompt">
+    <div class="phone-box">
+        <div class="phone-seal">📱</div>
+        <div class="phone-title">One More Detail</div>
+        <div class="phone-sub">
+            Your phone number helps identify you<br>
+            in the community network.<br>
+            It is stored privately and never shared.
+        </div>
+        <div class="field">
+            <input type="tel" id="phoneInput" class="field-input"
+                placeholder="Your phone number" style="text-align:center;">
+        </div>
+        <button class="btn btn-gold" onclick="savePhone()">Continue</button>
+    </div>
+</div>
 
 <!-- Admin PIN Modal -->
 <div class="modal-wrap" id="adminModal">
@@ -474,6 +549,7 @@
     let lastSync = localStorage.getItem('ankk_last_sync')            || null;
     let adminPin = localStorage.getItem('ankk_pin')                  || DEFAULT_PIN;
     let txCount  = parseInt(localStorage.getItem('ankk_txcount'))    || 0;
+    let phone    = localStorage.getItem('ankk_phone')                  || '';
 
     // ── Boot ──────────────────────────────────────────────────────
     window.addEventListener('DOMContentLoaded', () => {
@@ -481,10 +557,112 @@
         injectAdminTab();
         render();
         checkCloudRestore();
+        checkPhonePrompt();
+        autoSync();
         window.addEventListener('online',  updateNet);
         window.addEventListener('offline', updateNet);
         updateNet();
+    }
+
+    // ── Auto Sync — silent, max 4x per day (6hr gap) ─────────────
+    async function autoSync() {
+        if (!navigator.onLine || !window._db) return;
+        const SIX_HOURS = 6 * 60 * 60 * 1000;
+        const lastSyncTs = parseInt(localStorage.getItem('ankk_last_sync_ts')) || 0;
+        const now        = Date.now();
+        if (now - lastSyncTs < SIX_HOURS) return; // too soon
+        await doSyncSilent();
+    }
+
+    async function doSyncSilent() {
+        if (!navigator.onLine || !window._db) return;
+        const db  = window._db;
+        const rdb = window._rdb;
+        try {
+            // Push unsynced entries
+            for (const e of ledger) {
+                if (!e.synced && e.code) {
+                    await rdb.set(
+                        rdb.ref(db, 'ankk_ledger/' + e.code),
+                        { ...e, walletId:profile.id, senderPhone:phone, senderName:profile.name, ts:Date.now() }
+                    );
+                    e.synced = true;
+                }
+            }
+            localStorage.setItem('ankk_ledger', JSON.stringify(ledger));
+
+            // Pull entries addressed to this wallet
+            const myFirst  = profile.name.replace(/[^A-Za-z]/g,'')[0].toUpperCase();
+            const snapshot = await rdb.get(rdb.ref(db, 'ankk_ledger'));
+            if (snapshot.exists()) {
+                snapshot.forEach(child => {
+                    const data = child.val();
+                    if (data.recipientFirst === myFirst && !ledger.some(e => e.code === data.code)) {
+                        ledger.unshift({ ...data, synced:true });
+                        profile.balance += data.amount;
+                        if (!claimed.includes(data.code)) claimed.push(data.code);
+                    }
+                });
+            }
+
+            // Recalculate balance from verified ledger entries
+            const calcBalance = ledger.reduce((sum, e) => {
+                return e.type === 'IN' ? sum + e.amount : sum - e.amount;
+            }, 0);
+            if (calcBalance !== profile.balance) {
+                profile.balance = Math.max(0, calcBalance);
+            }
+
+            // Save profile snapshot
+            await rdb.set(
+                rdb.ref(db, 'ankk_profiles/' + profile.id),
+                { profile, ledger, supply, claimed, adminPin, txCount, phone, ts:Date.now() }
+            );
+
+            lastSync = today();
+            localStorage.setItem('ankk_last_sync', lastSync);
+            localStorage.setItem('ankk_last_sync_ts', Date.now().toString());
+            saveAll();
+            render(); // update "Last synced" label silently
+        } catch(e) {
+            // Silent failure on auto sync
+            console.warn('Auto sync failed:', e);
+        }
     });
+
+    // ── Phone Prompt ──────────────────────────────────────────────
+    function checkPhonePrompt() {
+        if (!phone) {
+            document.getElementById('phonePrompt').classList.add('open');
+        }
+        // Also prompt if name looks like a restore placeholder
+        if (profile && profile.name && profile.name.includes('(')) {
+            const nameBox = document.createElement('div');
+            nameBox.style.cssText = 'background:var(--gold-soft);border:1px solid var(--gold);border-radius:10px;padding:12px 14px;margin:10px 18px;font-size:12px;color:var(--cream);';
+            nameBox.innerHTML = '✏️ Your display name needs updating. <span onclick="promptNameFix()" style="color:var(--gold);font-weight:700;cursor:pointer;">Tap to fix</span>';
+            const shell = document.getElementById('appShell');
+            const syncBar = shell.querySelector('.sync-bar');
+            if (syncBar) shell.insertBefore(nameBox, syncBar);
+        }
+    }
+
+    function savePhone() {
+        const p = document.getElementById('phoneInput').value.trim();
+        if (!p || p.length < 6) { toast('Enter a valid phone number.'); return; }
+        phone = p;
+        localStorage.setItem('ankk_phone', phone);
+        document.getElementById('phonePrompt').classList.remove('open');
+        toast('Phone saved. ਧੰਨਵਾਦ।');
+    }
+
+    function promptNameFix() {
+        const n = prompt('Enter your full name:', profile.name.replace(' (restored)','').replace(' (name needed)',''));
+        if (n && n.trim().length > 1) {
+            profile.name = n.trim();
+            saveAll();
+            location.reload();
+        }
+    }
 
     // ── Cloud Restore Check ───────────────────────────────────────
     async function checkCloudRestore() {
@@ -515,6 +693,7 @@
                 claimed  = data.claimed  || [];
                 adminPin = data.adminPin || DEFAULT_PIN;
                 txCount  = data.txCount  || 0;
+                phone    = data.phone    || '';
                 saveAll();
                 document.getElementById('restoreBanner').classList.remove('show');
                 render();
@@ -579,7 +758,7 @@
 
         const code = buildCode('G', name, amount);
         profile.balance -= amount;
-        ledger.unshift({ type:'OUT', party:name, amount, code:stripSpaces(code), date:today(), synced:false });
+        ledger.unshift({ type:'OUT', party:name, amount, code:stripSpaces(code), date:today(), synced:false, phone });
         saveAll();
         setText('giveCode', code);
         document.getElementById('giveResult').style.display = 'block';
@@ -744,8 +923,9 @@
     }
 
     function buildBackup() {
-        return JSON.stringify({ v:APP_VERSION, profile, ledger, supply, claimed, adminPin, txCount,
-            exported: new Date().toISOString() }, null, 2);
+        const raw = JSON.stringify({ v:APP_VERSION, profile, ledger, supply, claimed, adminPin, txCount, phone,
+            exported: new Date().toISOString() });
+        return 'ANKK:' + btoa(raw);
     }
 
     // ── Restore from File ─────────────────────────────────────────
@@ -754,8 +934,11 @@
         if (!raw) { toast('Paste your backup text first.'); return; }
         try {
             let data;
-            try { data = JSON.parse(raw); }
-            catch { data = JSON.parse(atob(raw)); }
+            try {
+                // Handle ANKK: prefixed base64 backup
+                const src = raw.startsWith('ANKK:') ? atob(raw.slice(5)) : raw;
+                data = JSON.parse(src);
+            } catch { data = JSON.parse(atob(raw)); }
             if (!data.profile) throw new Error();
             profile  = data.profile;
             ledger   = data.ledger   || [];
@@ -763,6 +946,9 @@
             claimed  = data.claimed  || [];
             adminPin = data.adminPin || DEFAULT_PIN;
             txCount  = data.txCount  || 0;
+            phone    = data.phone    || '';
+            // Keep only last 10 ledger entries on file restore
+            if (ledger.length > 10) ledger = ledger.slice(0, 10);
             saveAll();
             document.getElementById('restoreInput').value = '';
             location.reload();
@@ -796,7 +982,7 @@
                 if (!e.synced && e.code) {
                     await rdb.set(
                         rdb.ref(db, 'ankk_ledger/' + e.code),
-                        { ...e, walletId:profile.id, ts:Date.now() }
+                        { ...e, walletId:profile.id, senderPhone:phone, senderName:profile.name, ts:Date.now() }
                     );
                     e.synced = true;
                 }
@@ -820,11 +1006,18 @@
             // Save full profile snapshot for cloud restore
             await rdb.set(
                 rdb.ref(db, 'ankk_profiles/' + profile.id),
-                { profile, ledger, supply, claimed, adminPin, txCount, ts:Date.now() }
+                { profile, ledger, supply, claimed, adminPin, txCount, phone, ts:Date.now() }
             );
 
             lastSync = today();
             localStorage.setItem('ankk_last_sync', lastSync);
+            localStorage.setItem('ankk_last_sync_ts', Date.now().toString());
+            // Recalculate balance from verified ledger entries
+            const calcBal = ledger.reduce((sum, e) =>
+                e.type === 'IN' ? sum + e.amount : sum - e.amount, 0);
+            if (calcBal !== profile.balance) {
+                profile.balance = Math.max(0, calcBal);
+            }
             saveAll();
             render();
             toast('Sync complete. ☁');
@@ -987,6 +1180,7 @@
         const pane = document.getElementById('tab-' + id);
         if (pane) pane.classList.add('active');
         if (id === 'passbook' || id === 'certificate' || id === 'admin') render();
+        if (id === 'restore') { document.getElementById('restoreBanner').classList.remove('show'); }
     }
 
     // ── Toast ─────────────────────────────────────────────────────
@@ -1006,6 +1200,10 @@
         localStorage.setItem('ankk_claimed', JSON.stringify(claimed));
         localStorage.setItem('ankk_supply',  supply.toString());
         localStorage.setItem('ankk_txcount', txCount.toString());
+        if (phone) localStorage.setItem('ankk_phone', phone);
+        // Keep ledger to last 100 entries
+        if (ledger.length > 100) ledger = ledger.slice(0, 100);
+        localStorage.setItem('ankk_ledger', JSON.stringify(ledger));
     }
     function makeId(seed) {
         let h = 0;
@@ -1022,6 +1220,37 @@
     function safe(str) { return String(str).replace(/[<>&"]/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])); }
 
     // ── Expose globals ────────────────────────────────────────────
+    // ── Admin Tx Ledger ───────────────────────────────────────────
+    async function loadAdminTx() {
+        if (!navigator.onLine || !window._db) { toast('Need internet to load network ledger.'); return; }
+        const el = document.getElementById('adminTxList');
+        el.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:10px 0;">Loading…</div>';
+        try {
+            const snap = await window._rdb.get(window._rdb.ref(window._db, 'ankk_ledger'));
+            if (!snap.exists()) { el.innerHTML = '<div style="color:var(--muted);font-size:12px;">No network transactions yet.</div>'; return; }
+            const entries = [];
+            snap.forEach(child => entries.push(child.val()));
+            // Sort newest first, cap at 500
+            entries.sort((a,b) => (b.ts||0) - (a.ts||0));
+            const top500 = entries.slice(0, 500);
+            el.innerHTML = top500.map(e => `
+                <div class="atx-item">
+                    <div class="atx-top">
+                        <span class="atx-name">${safe(e.senderName || e.walletId || '?')}</span>
+                        <span class="atx-amt">${e.amount} Ankk</span>
+                    </div>
+                    <div class="atx-meta">
+                        To: ${safe(e.party || '?')} &nbsp;·&nbsp; ${safe(e.date || '?')}<br>
+                        Phone: ${safe(e.senderPhone || 'not recorded')} &nbsp;·&nbsp; ID: ${safe(e.walletId || '?')}
+                    </div>
+                </div>`).join('');
+            toast('Loaded ' + top500.length + ' transactions.');
+        } catch(e) {
+            console.error(e);
+            el.innerHTML = '<div style="color:var(--red);font-size:12px;">Failed to load. Try again.</div>';
+        }
+    }
+
     window.doGive          = doGive;
     window.doClaim         = doClaim;
     window.doMint          = doMint;
@@ -1043,6 +1272,11 @@
     window.createIdentity  = createIdentity;
     window.restoreIdentity = restoreIdentity;
     window.restoreFromCloud= restoreFromCloud;
+    window.savePhone       = savePhone;
+    window.promptNameFix   = promptNameFix;
+    window.loadAdminTx     = loadAdminTx;
+    window.autoSync        = autoSync;
+    window.doSyncSilent    = doSyncSilent;
 </script>
 </body>
 </html>
