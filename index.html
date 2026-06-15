@@ -10,10 +10,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Ankk">
-
-    <!-- html2canvas for certificate PNG export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-
     <style>
         :root {
             --bg:         #1a1610;
@@ -29,58 +26,49 @@
             --green-soft: rgba(122,173,122,0.12);
             --red:        #c97a7a;
         }
-
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
-
         body {
-            background: var(--bg);
-            color: var(--cream);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            padding: 12px;
+            background: var(--bg); color: var(--cream);
+            min-height: 100vh; display: flex;
+            justify-content: center; align-items: flex-start; padding: 12px;
         }
-
         .shell {
-            width: 100%;
-            max-width: 440px;
-            background: var(--card);
-            border-radius: 20px;
-            border: 1px solid var(--border);
-            overflow: hidden;
+            width: 100%; max-width: 440px; background: var(--card);
+            border-radius: 20px; border: 1px solid var(--border); overflow: hidden;
         }
 
-        /* ── Identity Panel ── */
+        /* ── Identity ── */
         .identity {
             padding: 20px 18px 16px;
             background: linear-gradient(160deg, #2a2518 0%, #1e1c15 100%);
             border-bottom: 1px solid var(--border);
         }
-        .identity-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 14px;
-        }
+        .identity-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
         .user-name { font-size: 17px; font-weight: 700; color: var(--cream); }
         .user-id   { font-size: 11px; color: var(--muted); margin-top: 3px; }
-        .tagline   {
-            font-size: 10px; color: var(--gold);
-            letter-spacing: 1.2px; text-transform: uppercase;
-            font-weight: 600; text-align: right; line-height: 1.5;
-        }
+        .tagline   { font-size: 10px; color: var(--gold); letter-spacing: 1.2px; text-transform: uppercase; font-weight: 600; text-align: right; line-height: 1.5; }
         .balance-row { display: flex; align-items: baseline; gap: 8px; }
         .balance-num  { font-size: 42px; font-weight: 800; color: var(--gold); line-height: 1; }
         .balance-unit { font-size: 15px; color: var(--muted); font-weight: 500; }
 
+        /* ── Restore Banner ── */
+        .restore-banner {
+            background: var(--gold-soft); border-bottom: 1px solid var(--gold);
+            padding: 12px 16px; display: none;
+            justify-content: space-between; align-items: center; gap: 10px;
+        }
+        .restore-banner.show { display: flex; }
+        .restore-banner-text { font-size: 12px; color: var(--cream); line-height: 1.5; }
+        .restore-banner-btn {
+            background: var(--gold); color: #1a1610; border: none;
+            padding: 7px 14px; border-radius: 8px; font-size: 12px;
+            font-weight: 700; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+        }
+
         /* ── Sync Bar ── */
         .sync-bar {
-            background: #1e1c15;
-            padding: 9px 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            background: #1e1c15; padding: 9px 16px;
+            display: flex; justify-content: space-between; align-items: center;
             border-bottom: 1px solid var(--border);
         }
         .sync-left { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--muted); flex-wrap: wrap; }
@@ -94,17 +82,13 @@
         .sync-btn:active { opacity: 0.7; }
 
         /* ── Tabs ── */
-        .tab-nav {
-            display: flex; background: #161410;
-            border-bottom: 1px solid var(--border); overflow-x: auto;
-        }
+        .tab-nav { display: flex; background: #161410; border-bottom: 1px solid var(--border); overflow-x: auto; }
         .tab-nav::-webkit-scrollbar { display: none; }
         .tab-btn {
             flex: 1; min-width: 55px; padding: 13px 4px;
             font-size: 11px; font-weight: 700; color: var(--muted);
             text-align: center; cursor: pointer;
-            border-bottom: 2px solid transparent; white-space: nowrap;
-            transition: color 0.2s;
+            border-bottom: 2px solid transparent; white-space: nowrap; transition: color 0.2s;
         }
         .tab-btn.active { color: var(--gold); border-bottom-color: var(--gold); }
 
@@ -116,8 +100,7 @@
         .field { margin-bottom: 14px; }
         .field-label {
             display: block; font-size: 10px; font-weight: 700;
-            color: var(--muted); text-transform: uppercase;
-            letter-spacing: 0.8px; margin-bottom: 6px;
+            color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px;
         }
         .field-input {
             width: 100%; background: var(--input); border: 1px solid var(--border);
@@ -128,18 +111,11 @@
         .field-input::placeholder { color: var(--muted); }
 
         /* ── Buttons ── */
-        .btn {
-            width: 100%; padding: 13px; border: none; border-radius: 10px;
-            font-size: 15px; font-weight: 700; cursor: pointer; transition: opacity 0.2s;
-        }
+        .btn { width: 100%; padding: 13px; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; transition: opacity 0.2s; }
         .btn:active { opacity: 0.8; }
         .btn-gold  { background: var(--gold); color: #1a1610; }
         .btn-green { background: var(--green); color: #1a1610; }
         .btn-muted { background: var(--border); color: var(--cream); }
-        .btn-sm {
-            padding: 9px 16px; font-size: 13px; font-weight: 700;
-            border: none; border-radius: 8px; cursor: pointer; width: auto;
-        }
 
         /* ── Result Box ── */
         .result-box {
@@ -149,9 +125,9 @@
         }
         .result-hint { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
         .code-block {
-            font-family: monospace; font-size: 15px; font-weight: 700;
-            color: var(--green); background: #161410; padding: 10px;
-            border-radius: 8px; word-break: break-all; letter-spacing: 1px;
+            font-family: monospace; font-size: 18px; font-weight: 700;
+            color: var(--green); background: #161410; padding: 12px 10px;
+            border-radius: 8px; letter-spacing: 3px; word-spacing: 6px;
             border: 1px solid var(--border); margin-bottom: 8px;
         }
 
@@ -177,40 +153,33 @@
             border: 1px solid var(--gold); border-radius: 16px;
             padding: 28px 20px; text-align: center; margin-bottom: 14px;
         }
-        .cert-seal   { font-size: 38px; margin-bottom: 10px; }
-        .cert-title  {
-            font-size: 10px; letter-spacing: 2.5px; text-transform: uppercase;
-            color: var(--gold); font-weight: 700; margin-bottom: 16px;
-        }
-        .cert-name   { font-size: 24px; font-weight: 800; color: var(--cream); margin-bottom: 4px; }
-        .cert-sub    { font-size: 12px; color: var(--muted); font-style: italic; margin-bottom: 18px; }
-        .cert-rule   { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+        .cert-seal  { font-size: 38px; margin-bottom: 10px; }
+        .cert-title { font-size: 10px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--gold); font-weight: 700; margin-bottom: 16px; }
+        .cert-name  { font-size: 24px; font-weight: 800; color: var(--cream); margin-bottom: 4px; }
+        .cert-sub   { font-size: 12px; color: var(--muted); font-style: italic; margin-bottom: 18px; }
+        .cert-rule  { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
         .cert-count-label { font-size: 10px; color: var(--muted); letter-spacing: 0.5px; margin-bottom: 4px; }
-        .cert-count  { font-size: 52px; font-weight: 800; color: var(--gold); line-height: 1.1; }
-        .cert-unit   { font-size: 13px; color: var(--muted); margin-top: 2px; margin-bottom: 16px; }
+        .cert-count { font-size: 52px; font-weight: 800; color: var(--gold); line-height: 1.1; }
+        .cert-unit  { font-size: 13px; color: var(--muted); margin-top: 2px; margin-bottom: 16px; }
         .cert-witness {
             font-size: 10px; color: var(--muted); letter-spacing: 0.3px;
-            line-height: 1.6; border-top: 1px solid var(--border);
-            padding-top: 14px; margin-top: 4px;
+            line-height: 1.6; border-top: 1px solid var(--border); padding-top: 14px; margin-top: 4px;
         }
-        .cert-date   { font-size: 10px; color: var(--muted); margin-top: 8px; }
-        .cert-btns   { display: flex; gap: 10px; margin-top: 4px; }
+        .cert-date  { font-size: 10px; color: var(--muted); margin-top: 8px; }
+        .cert-btns  { display: flex; gap: 10px; margin-top: 4px; }
 
         /* ── Save Tab ── */
         .save-row {
             display: flex; align-items: center; gap: 14px;
             background: var(--input); border: 1px solid var(--border);
-            border-radius: 12px; padding: 14px; margin-bottom: 10px; cursor: pointer;
-            transition: border-color 0.2s;
+            border-radius: 12px; padding: 14px; margin-bottom: 10px;
+            cursor: pointer; transition: border-color 0.2s;
         }
         .save-row:active { border-color: var(--gold); }
         .save-icon  { font-size: 22px; flex-shrink: 0; }
         .save-label { font-size: 14px; font-weight: 600; color: var(--cream); }
         .save-sub   { font-size: 11px; color: var(--muted); margin-top: 2px; }
-        .save-divider {
-            text-align: center; font-size: 10px; color: var(--muted);
-            letter-spacing: 1px; text-transform: uppercase; margin: 16px 0 10px;
-        }
+        .save-divider { text-align: center; font-size: 10px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin: 16px 0 10px; }
         .restore-area {
             width: 100%; background: var(--input); border: 1px solid var(--border);
             border-radius: 10px; padding: 11px 13px; color: var(--cream);
@@ -219,31 +188,21 @@
         .restore-area:focus { border-color: var(--gold); }
 
         /* ── Admin ── */
-        .admin-info {
-            background: var(--gold-soft); border: 1px solid var(--gold);
-            border-radius: 12px; padding: 12px 14px; margin-bottom: 16px; font-size: 12px; color: var(--muted);
-        }
+        .admin-info { background: var(--gold-soft); border: 1px solid var(--gold); border-radius: 12px; padding: 12px 14px; margin-bottom: 16px; font-size: 12px; color: var(--muted); }
         .admin-supply { font-size: 22px; font-weight: 800; color: var(--gold); }
 
-        /* ── Setup Screen ── */
-        .setup-screen {
-            padding: 30px 20px; text-align: center;
-        }
-        .setup-seal   { font-size: 48px; margin-bottom: 16px; }
-        .setup-title  { font-size: 20px; font-weight: 800; color: var(--gold); margin-bottom: 6px; }
-        .setup-sub    { font-size: 13px; color: var(--muted); margin-bottom: 24px; line-height: 1.6; }
-        .setup-hint   { font-size: 11px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+        /* ── Setup ── */
+        .setup-screen { padding: 30px 20px; text-align: center; }
+        .setup-seal  { font-size: 48px; margin-bottom: 16px; }
+        .setup-title { font-size: 20px; font-weight: 800; color: var(--gold); margin-bottom: 6px; }
+        .setup-sub   { font-size: 13px; color: var(--muted); margin-bottom: 24px; line-height: 1.6; }
+        .setup-hint  { font-size: 11px; color: var(--muted); margin-top: 10px; line-height: 1.6; }
+        .setup-btns  { display: flex; gap: 10px; margin-bottom: 20px; }
 
         /* ── Modal ── */
-        .modal-wrap {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.82);
-            display: none; justify-content: center; align-items: center; z-index: 999; padding: 20px;
-        }
+        .modal-wrap { position: fixed; inset: 0; background: rgba(0,0,0,0.82); display: none; justify-content: center; align-items: center; z-index: 999; padding: 20px; }
         .modal-wrap.open { display: flex; }
-        .modal-box {
-            width: 100%; max-width: 320px; background: var(--card);
-            border: 1px solid var(--border); border-radius: 16px; padding: 24px; text-align: center;
-        }
+        .modal-box { width: 100%; max-width: 320px; background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; text-align: center; }
         .modal-title { font-size: 16px; font-weight: 700; color: var(--gold); margin-bottom: 8px; }
         .modal-sub   { font-size: 12px; color: var(--muted); margin-bottom: 16px; line-height: 1.5; }
         .modal-btns  { display: flex; gap: 10px; margin-top: 14px; }
@@ -258,14 +217,9 @@
             transition: transform 0.3s ease; white-space: nowrap; pointer-events: none;
         }
         .toast.show { transform: translateX(-50%) translateY(0); }
-
-        .section-head {
-            font-size: 10px; font-weight: 700; color: var(--muted);
-            text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px;
-        }
-        .mt10 { margin-top: 10px; }
-        .mt16 { margin-top: 16px; }
+        .section-head { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px; }
         .sep { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+        .mt10 { margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -277,7 +231,7 @@
         <div class="identity-top">
             <div>
                 <div class="user-name" id="uName">—</div>
-                <div class="user-id"   id="uId">ID: ——</div>
+                <div class="user-id" id="uId">ID: ——</div>
             </div>
             <div class="tagline">Recognition<br>of Sincerity</div>
         </div>
@@ -285,6 +239,12 @@
             <span class="balance-num" id="uBalance">0</span>
             <span class="balance-unit">Ankk (ਅੰਕ)</span>
         </div>
+    </div>
+
+    <!-- Restore Banner -->
+    <div class="restore-banner" id="restoreBanner">
+        <div class="restore-banner-text">☁ A cloud record was found.<br>Restore your balance and passbook?</div>
+        <button class="restore-banner-btn" onclick="restoreFromCloud()">Restore Now</button>
     </div>
 
     <!-- Sync Bar -->
@@ -298,7 +258,7 @@
         <button class="sync-btn" onclick="doSync()">Sync</button>
     </div>
 
-    <!-- Tab Nav — Admin tab injected by JS only if admin wallet -->
+    <!-- Tab Nav -->
     <div class="tab-nav" id="tabNav">
         <div class="tab-btn active" onclick="goTab('give')">Give</div>
         <div class="tab-btn" onclick="goTab('receive')">Receive</div>
@@ -321,16 +281,15 @@
         <div class="result-box" id="giveResult">
             <div class="result-hint">Share this code with the recipient:</div>
             <div class="code-block" id="giveCode">—</div>
-            <div style="font-size:11px;color:var(--muted);">Show on screen or read aloud. No internet needed.</div>
+            <div style="font-size:11px;color:var(--muted);">Read aloud or show on screen. No internet needed.</div>
         </div>
-
-        <div style="margin-top:28px;padding:20px 8px 8px;border-top:1px solid var(--border);">
+        <div style="margin-top:28px;padding:20px 4px 8px;border-top:1px solid var(--border);">
             <div style="font-size:15px;color:var(--muted);line-height:2;text-align:center;font-style:italic;">
                 O friend &mdash; wealth and possession<br>
                 are but a simulation.<br>
                 So is the entire set up of this world.
             </div>
-            <div style="margin-top:14px;text-align:center;font-size:16px;color:var(--gold);font-weight:700;letter-spacing:0.4px;">
+            <div style="margin-top:14px;text-align:center;font-size:16px;color:var(--gold);font-weight:700;">
                 True is Aek Onkar alone.
             </div>
         </div>
@@ -339,10 +298,10 @@
     <!-- TAB: RECEIVE -->
     <div id="tab-receive" class="tab-pane">
         <div class="field">
-            <label class="field-label">Paste Recognition Code</label>
+            <label class="field-label">Paste or Type Recognition Code</label>
             <textarea id="receiveCode" class="field-input" rows="3"
-                style="resize:none;font-family:monospace;font-size:13px;"
-                placeholder="Paste the code given to you…"></textarea>
+                style="resize:none;font-family:monospace;font-size:15px;letter-spacing:2px;"
+                placeholder="e.g. M150 6033 434K DK23"></textarea>
         </div>
         <button class="btn btn-green" onclick="doClaim()">Accept Ankks</button>
     </div>
@@ -358,7 +317,7 @@
         <div class="cert-card" id="certCard">
             <div class="cert-seal">🌾</div>
             <div class="cert-title">Certificate of Recognition</div>
-            <div class="cert-name"  id="certName">—</div>
+            <div class="cert-name" id="certName">—</div>
             <div class="cert-sub">Recognition of Sincerity</div>
             <hr class="cert-rule">
             <div class="cert-count-label">Total Ankks Earned</div>
@@ -378,25 +337,36 @@
 
     <!-- TAB: SAVE -->
     <div id="tab-save" class="tab-pane">
-        <div class="section-head">Secure Your Record</div>
+        <div class="section-head">Export Your Record</div>
         <div class="save-row" onclick="exportFile()">
             <div class="save-icon">💾</div>
             <div>
                 <div class="save-label">Save to Device</div>
-                <div class="save-sub">Downloads a backup file. Move it anywhere.</div>
+                <div class="save-sub">Downloads a backup file to your phone. Move it anywhere.</div>
             </div>
         </div>
         <div class="save-row" onclick="shareViaApps()">
             <div class="save-icon">↗️</div>
             <div>
                 <div class="save-label">Share via Apps</div>
-                <div class="save-sub">Opens your phone's share sheet. You choose where.</div>
+                <div class="save-sub">Opens share sheet. You pick where it goes.</div>
             </div>
         </div>
-        <div class="save-divider">— Restore —</div>
+
+        <div class="save-divider">— Edit Profile —</div>
+        <div class="field">
+            <label class="field-label">Update Your Display Name</label>
+            <input type="text" id="editName" class="field-input" placeholder="Enter your full name">
+        </div>
+        <button class="btn btn-muted" onclick="saveName()">Save Name</button>
+
+        <div class="save-divider">— Restore from Backup File —</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.6;">
+            Paste the text from a previously saved backup file.
+        </div>
         <textarea id="restoreInput" class="restore-area" rows="4"
-            placeholder="Paste your backup text here to restore…"></textarea>
-        <button class="btn btn-muted" onclick="doRestore()">Restore from Backup</button>
+            placeholder="Paste backup text here…"></textarea>
+        <button class="btn btn-muted" onclick="doRestore()">Restore from File</button>
     </div>
 
     <!-- TAB: ADMIN (injected only for admin wallet) -->
@@ -415,26 +385,24 @@
         </div>
         <button class="btn btn-gold" onclick="doMint()">Grant Ankks</button>
         <div class="result-box" id="mintResult" style="background:var(--gold-dim);border-color:var(--gold);">
-            <div class="result-hint">Give this code to the recipient:</div>
+            <div class="result-hint">Read this code to the recipient:</div>
             <div class="code-block" id="mintCode" style="color:var(--gold);">—</div>
         </div>
-
         <hr class="sep">
         <div class="section-head">Change Admin PIN</div>
         <div class="field">
             <input type="password" id="newPin" class="field-input" placeholder="New PIN (min 4 characters)">
         </div>
         <button class="btn btn-muted" onclick="changePin()">Update PIN</button>
-
         <hr class="sep">
         <div class="section-head">Master Recovery Code</div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
-            Print this code and store it safely. On a new phone, paste it in Save → Restore to recover admin identity.
+            Print and store safely. Paste in Save → Restore to recover on a new phone.
         </div>
         <button class="btn btn-muted" onclick="showMasterCode()">Show Master Code</button>
         <div class="result-box" id="masterResult" style="background:var(--gold-dim);border-color:var(--gold);margin-top:12px;">
             <div class="result-hint">Write this down or print it. Keep it private.</div>
-            <div class="code-block" id="masterCode" style="color:var(--gold);font-size:13px;">—</div>
+            <div class="code-block" id="masterCode" style="color:var(--gold);font-size:11px;letter-spacing:0;word-break:break-all;">—</div>
         </div>
     </div>
 
@@ -453,10 +421,8 @@
     </div>
 </div>
 
-<!-- Toast -->
 <div class="toast" id="toast"></div>
 
-<!-- Service Worker Registration -->
 <script>
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('ankk-sw.js').catch(() => {});
@@ -467,7 +433,7 @@
 <script type="module">
     import { initializeApp }
         from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, set, get, child, query, orderByChild, equalTo }
+    import { getDatabase, ref, set, get, child }
         from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
     const firebaseConfig = {
@@ -484,7 +450,7 @@
         const app = initializeApp(firebaseConfig);
         const db  = getDatabase(app);
         window._db  = db;
-        window._rdb = { ref, set, get, child, query, orderByChild, equalTo };
+        window._rdb = { ref, set, get, child };
     } catch(e) {
         console.warn("Firebase error:", e);
         window._db  = null;
@@ -495,19 +461,10 @@
 <!-- App Logic -->
 <script>
     // ── Constants ─────────────────────────────────────────────────
-    const APP_VERSION  = "ankk-v2";
-    const DEFAULT_PIN  = "0987";
-
-    // ADMIN IDENTITY — set this to the wallet ID of the admin
-    // Generated from: first 3 letters of name + last 2 digits phone + last 2 digits birth year + first letter birthplace
-    // Change this string after first admin setup
-    const ADMIN_ID = "17CCPY";  // admin wallet — only this ID sees the Admin tab
-
-    const ALPHA  = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".split("");
-    const NONCES = [
-        "7FD2","A9B1","E4C8","3F1A","B6D9","C2E5","F8A3","19B7","4ECD","92F1",
-        "A5B6","C7D8","E9F0","1234","5678","9ABC","DEF1","2345","6789","ABCD"
-    ];
+    const APP_VERSION = "ankk-v3";
+    const DEFAULT_PIN = "0987";
+    const ADMIN_ID    = "17CCPY";
+    const ALPHA       = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".split("");
 
     // ── State ─────────────────────────────────────────────────────
     let profile  = JSON.parse(localStorage.getItem('ankk_profile'))  || null;
@@ -516,162 +473,66 @@
     let claimed  = JSON.parse(localStorage.getItem('ankk_claimed'))  || [];
     let lastSync = localStorage.getItem('ankk_last_sync')            || null;
     let adminPin = localStorage.getItem('ankk_pin')                  || DEFAULT_PIN;
+    let txCount  = parseInt(localStorage.getItem('ankk_txcount'))    || 0;
 
     // ── Boot ──────────────────────────────────────────────────────
     window.addEventListener('DOMContentLoaded', () => {
-        if (!profile) showSetup();
-        else          bootApp();
+        if (!profile) { showSetup(); return; }
+        injectAdminTab();
+        render();
+        checkCloudRestore();
         window.addEventListener('online',  updateNet);
         window.addEventListener('offline', updateNet);
         updateNet();
     });
 
-    function bootApp() {
-        injectAdminTab();
-        render();
+    // ── Cloud Restore Check ───────────────────────────────────────
+    async function checkCloudRestore() {
+        if (!navigator.onLine || !window._db || !window._rdb) return;
+        if (lastSync) return; // already synced before — no need for banner
+        try {
+            const snap = await window._rdb.get(
+                window._rdb.ref(window._db, 'ankk_profiles/' + profile.id)
+            );
+            if (snap.exists()) {
+                document.getElementById('restoreBanner').classList.add('show');
+            }
+        } catch(e) { /* silent */ }
     }
 
-    // ── Setup Flow (first run) ────────────────────────────────────
-    function showSetup() {
-        const shell = document.getElementById('appShell');
-        shell.innerHTML = `
-        <div class="setup-screen">
-            <div class="setup-seal">🌾</div>
-            <div class="setup-title">Ankk · ਅੰਕ</div>
-            <div class="setup-sub">Recognition of Sincerity</div>
-
-            <div style="display:flex;gap:10px;margin:20px 0;">
-                <button class="btn btn-gold" style="flex:1;font-size:13px;" onclick="showNewUser()">I am New</button>
-                <button class="btn btn-muted" style="flex:1;font-size:13px;" onclick="showReturning()">I am Returning</button>
-            </div>
-
-            <div id="setupForm" style="display:none;">
-                <div class="field" style="text-align:left">
-                    <label class="field-label">First 3 letters of your name</label>
-                    <input type="text" id="s1" class="field-input" maxlength="3" placeholder="e.g. GUR" style="text-transform:uppercase">
-                </div>
-                <div class="field" id="nameField" style="text-align:left">
-                    <label class="field-label">Your full name (for display)</label>
-                    <input type="text" id="sName" class="field-input" placeholder="e.g. Gurpreet Singh">
-                </div>
-                <div class="field" style="text-align:left">
-                    <label class="field-label">Last 2 digits of your phone number</label>
-                    <input type="text" id="s2" class="field-input" maxlength="2" placeholder="e.g. 47">
-                </div>
-                <div class="field" style="text-align:left">
-                    <label class="field-label">Last 2 digits of your birth year</label>
-                    <input type="text" id="s3" class="field-input" maxlength="2" placeholder="e.g. 52">
-                </div>
-                <div class="field" style="text-align:left">
-                    <label class="field-label">First letter of your birthplace</label>
-                    <input type="text" id="s4" class="field-input" maxlength="1" placeholder="e.g. A for Amritsar" style="text-transform:uppercase">
-                </div>
-                <button class="btn btn-gold mt10" id="setupBtn" onclick="createIdentity()">Create My Record</button>
-                <div class="setup-hint" id="setupHint">
-                    Remember these 5 details — they rebuild your identity<br>on any new phone, without any backup.
-                </div>
-            </div>
-        </div>`;
-    }
-
-    function showNewUser() {
-        document.getElementById('setupForm').style.display = 'block';
-        document.getElementById('nameField').style.display = 'block';
-        document.getElementById('setupBtn').textContent    = 'Create My Record';
-        document.getElementById('setupBtn').onclick        = createIdentity;
-        document.getElementById('setupHint').style.display = 'block';
-    }
-
-    function showReturning() {
-        document.getElementById('setupForm').style.display  = 'block';
-        document.getElementById('nameField').style.display  = 'none';
-        document.getElementById('setupBtn').textContent     = 'Restore My Record';
-        document.getElementById('setupBtn').onclick         = restoreIdentity;
-        document.getElementById('setupHint').innerHTML      =
-            'Enter the same 5 details you used when you first joined.<br>Your record will be restored.';
-    }
-
-    async function restoreIdentity() {
-        const p1 = (document.getElementById('s1').value.trim().toUpperCase()).substring(0,3);
-        const p2 = document.getElementById('s2').value.trim().substring(0,2);
-        const p3 = document.getElementById('s3').value.trim().substring(0,2);
-        const p4 = (document.getElementById('s4').value.trim().toUpperCase()).substring(0,1);
-
-        if (!p1 || !p2 || !p3 || !p4) { toast('Please fill all four fields.'); return; }
-        if (!/^\d{2}$/.test(p2) || !/^\d{2}$/.test(p3)) {
-            toast('Phone and birth year digits must be numbers.'); return;
+    async function restoreFromCloud() {
+        if (!window._db || !window._rdb) { toast('No cloud connection.'); return; }
+        toast('Restoring from cloud…');
+        try {
+            const snap = await window._rdb.get(
+                window._rdb.ref(window._db, 'ankk_profiles/' + profile.id)
+            );
+            if (snap.exists()) {
+                const data = snap.val();
+                profile  = data.profile  || profile;
+                ledger   = data.ledger   || [];
+                supply   = data.supply   || 0;
+                claimed  = data.claimed  || [];
+                adminPin = data.adminPin || DEFAULT_PIN;
+                txCount  = data.txCount  || 0;
+                saveAll();
+                document.getElementById('restoreBanner').classList.remove('show');
+                render();
+                toast('Restored. ਵਾਹਿਗੁਰੂ।');
+            }
+        } catch(e) {
+            toast('Restore failed. Try again.');
         }
-
-        const seed    = p1 + p2 + p3 + p4;
-        const id      = makeId(seed);
-        const guessName = p1.charAt(0) + p1.slice(1).toLowerCase() + ' (restored)';
-
-        // Try to pull from Firebase first
-        if (navigator.onLine && window._db && window._rdb) {
-            toast('Checking cloud record…');
-            try {
-                const snapshot = await window._rdb.get(
-                    window._rdb.ref(window._db, 'ankk_profiles/' + id)
-                );
-                if (snapshot.exists()) {
-                    const data = snapshot.val();
-                    profile  = data.profile  || { name: guessName, id, balance: 0, seed };
-                    ledger   = data.ledger   || [];
-                    supply   = data.supply   || 0;
-                    claimed  = data.claimed  || [];
-                    adminPin = data.adminPin || DEFAULT_PIN;
-                    saveAll();
-                    toast('Record restored from cloud. ਵਾਹਿਗੁਰੂ।');
-                    setTimeout(() => location.reload(), 1200);
-                    return;
-                }
-            } catch(e) { console.warn('Cloud restore failed:', e); }
-        }
-
-        // Offline fallback — reconstruct identity only
-        profile = { name: guessName, id, balance: 0, seed };
-        saveAll();
-        toast('Identity restored. Update your name in settings.');
-        setTimeout(() => location.reload(), 1200);
-    }
-
-    function createIdentity() {
-        const p1   = (document.getElementById('s1').value.trim().toUpperCase()).substring(0,3);
-        const name = document.getElementById('sName').value.trim();
-        const p2   = document.getElementById('s2').value.trim().substring(0,2);
-        const p3   = document.getElementById('s3').value.trim().substring(0,2);
-        const p4   = (document.getElementById('s4').value.trim().toUpperCase()).substring(0,1);
-
-        if (!p1 || !name || !p2 || !p3 || !p4) {
-            toast('Please fill all five fields.'); return;
-        }
-        if (!/^\d{2}$/.test(p2) || !/^\d{2}$/.test(p3)) {
-            toast('Phone and birth year digits must be numbers.'); return;
-        }
-
-        const seed = p1 + p2 + p3 + p4;
-        const id   = makeId(seed);
-
-        profile = { name, id, balance: 0, seed };
-        saveAll();
-
-        // Reload the full app shell
-        location.reload();
     }
 
     // ── Admin Tab Injection ───────────────────────────────────────
     function injectAdminTab() {
-        if (!profile) return;
-        const isAdmin = (profile.id === ADMIN_ID) || (ADMIN_ID === "ADMIN0");
-        // During first deployment ADMIN_ID is placeholder — admin always visible
-        // Once set to real ID — only that wallet sees the tab
-        if (!isAdmin) return;
-
+        if (!profile || profile.id !== ADMIN_ID) return;
         const nav = document.getElementById('tabNav');
         const btn = document.createElement('div');
-        btn.className = 'tab-btn';
+        btn.className   = 'tab-btn';
         btn.textContent = 'Admin';
-        btn.onclick = openAdminModal;
+        btn.onclick     = openAdminModal;
         nav.appendChild(btn);
     }
 
@@ -685,8 +546,10 @@
         setText('certName',  profile.name);
         setText('certCount', profile.balance);
         setText('certDate',  'As of ' + new Date().toLocaleDateString('en-IN',
-            {day:'numeric', month:'long', year:'numeric'}));
+            { day:'numeric', month:'long', year:'numeric' }));
         setText('lastSyncedLabel', lastSync ? 'Synced ' + lastSync : 'Never synced');
+        const nameInput = document.getElementById('editName');
+        if (nameInput) nameInput.placeholder = profile.name;
         renderLedger();
     }
 
@@ -704,8 +567,7 @@
                     <div class="ledger-meta">${safe(e.date)} · ${e.synced ? '☁ Synced' : '◎ Local'}</div>
                 </div>
                 <div class="ledger-amt ${e.type.toLowerCase()}">${e.type === 'IN' ? '+' : '−'}${e.amount}</div>
-            </div>
-        `).join('');
+            </div>`).join('');
     }
 
     // ── Give ──────────────────────────────────────────────────────
@@ -717,9 +579,8 @@
 
         const code = buildCode('G', name, amount);
         profile.balance -= amount;
-        ledger.unshift({ type:'OUT', party:name, amount, code, date:today(), synced:false });
+        ledger.unshift({ type:'OUT', party:name, amount, code:stripSpaces(code), date:today(), synced:false });
         saveAll();
-
         setText('giveCode', code);
         document.getElementById('giveResult').style.display = 'block';
         render();
@@ -728,21 +589,24 @@
 
     // ── Claim ─────────────────────────────────────────────────────
     function doClaim() {
-        const raw = document.getElementById('receiveCode').value.trim().toUpperCase();
-        if (!raw || raw.length < 12) { toast('Paste a valid recognition code.'); return; }
+        const raw  = stripSpaces(document.getElementById('receiveCode').value.trim().toUpperCase());
+        if (!raw || raw.length < 14) { toast('Paste a valid recognition code.'); return; }
         if (claimed.includes(raw))   { toast('This code has already been received.'); return; }
 
         const parsed = parseCode(raw);
         if (!parsed) { toast('Code could not be read. Check and try again.'); return; }
 
-        const mySig = sig(profile.name);
-        if (parsed.recipientSig !== mySig) { toast('This code was given to someone else.'); return; }
+        // First letter check — basic sanity, not hard rejection for wrong name
+        const myFirst = profile.name.replace(/[^A-Za-z]/g,'')[0].toUpperCase();
+        if (parsed.recipientFirst && parsed.recipientFirst !== myFirst) {
+            toast('This code appears to be for someone else (' + parsed.recipientFirst + '). Continue anyway?');
+            // Give a second chance — soft warning only
+        }
 
         profile.balance += parsed.amount;
         ledger.unshift({ type:'IN', party:parsed.party, amount:parsed.amount, code:raw, date:today(), synced:false });
         claimed.push(raw);
         saveAll();
-
         document.getElementById('receiveCode').value = '';
         goTab('passbook');
         render();
@@ -757,58 +621,57 @@
 
         const code = buildCode('M', name, amount);
         supply += amount;
-        // No OUT ledger entry — minting creates new Ankks, not a transfer from admin balance
-        // Ledger entry appears only when recipient claims the code
+        // No OUT ledger entry — minting creates Ankks, not a transfer from admin balance
         localStorage.setItem('ankk_supply', supply.toString());
         saveAll();
-
         setText('mintCode', code);
         document.getElementById('mintResult').style.display = 'block';
         render();
-        toast('Ankks granted. Share the code.');
+        toast('Ankks granted. Read the code to recipient.');
     }
 
-    // ── Master Recovery Code ──────────────────────────────────────
-    function showMasterCode() {
-        const master = JSON.stringify({
-            type: 'ANKK_MASTER',
-            v: APP_VERSION,
-            profile, ledger, supply, claimed, adminPin,
-            generated: new Date().toISOString()
-        });
-        const encoded = btoa(master);
-        setText('masterCode', encoded);
-        document.getElementById('masterResult').style.display = 'block';
-        toast('Write this down or print it. Keep it private.');
-    }
-
-    // ── Code Builder ──────────────────────────────────────────────
+    // ── Code Builder — 16 chars in blocks of 4 ───────────────────
+    // Structure: PREFIX(1) + DATE(4) + NONCE(1) + AMOUNT(5) + SENDERSIG(2) + RECIPFIRST(1) + COUNTER(2)
+    // = 16 chars displayed as XXXX XXXX XXXX XXXX
     function buildCode(prefix, recipientName, amount) {
         const d         = new Date();
         const dateBlock = pad2(d.getDate()) + pad2(d.getMonth() + 1);
-        const ni        = Math.floor(Math.random() * 16);  // max 16 so hex is always 1 char (0-f)
+        const ni        = Math.floor(Math.random() * 16);
         const niHex     = ni.toString(16).toUpperCase();
         const encoded   = cipher(amount.toString().padStart(5, '0'), ni + 3, false);
         const sSig      = sig(profile.name);
-        const rSig      = sig(recipientName);
-        return `${prefix}${dateBlock}${niHex}${encoded}${sSig}${rSig}`;
+        const rFirst    = recipientName.replace(/[^A-Za-z]/g,'')[0].toUpperCase();
+        txCount++;
+        localStorage.setItem('ankk_txcount', txCount.toString());
+        const counter   = cipher(txCount.toString().padStart(2,'0'), ni + 5, false);
+        const raw = `${prefix}${dateBlock}${niHex}${encoded}${sSig}${rFirst}${counter}`;
+        return formatCode(raw);
     }
 
-    function parseCode(code) {
+    function parseCode(raw) {
         try {
-            const prefix    = code[0];
-            const niHex     = code[5];
-            const encoded   = code.substring(6, 11);
-            const senderSig = code.substring(11, 13);
-            const recipSig  = code.substring(13, 15);
-            const ni        = parseInt(niHex, 16);
-            const amtStr    = cipher(encoded, ni + 3, true);
-            const amount    = parseInt(amtStr);
+            const code        = stripSpaces(raw);
+            if (code.length !== 16) return null;
+            const prefix      = code[0];
+            const niHex       = code[5];
+            const encoded     = code.substring(6, 11);
+            const senderSig   = code.substring(11, 13);
+            const recipFirst  = code[13];
+            const ni          = parseInt(niHex, 16);
+            const amtStr      = cipher(encoded, ni + 3, true);
+            const amount      = parseInt(amtStr);
             if (isNaN(amount) || amount < 1) return null;
             const party = prefix === 'M' ? 'Admin (Granted)' : `Sender ${senderSig}`;
-            return { amount, senderSig, recipientSig: recipSig, party };
+            return { amount, senderSig, recipientFirst: recipFirst, party };
         } catch { return null; }
     }
+
+    // Format as blocks of 4: XXXX XXXX XXXX XXXX
+    function formatCode(raw) {
+        const s = stripSpaces(raw);
+        return s.match(/.{1,4}/g).join(' ');
+    }
+    function stripSpaces(s) { return s.replace(/[\s\-]/g, ''); }
 
     // ── Cipher ────────────────────────────────────────────────────
     function cipher(text, shift, reverse) {
@@ -825,14 +688,10 @@
     function saveCertPng() {
         const card = document.getElementById('certCard');
         toast('Preparing image…');
-        html2canvas(card, {
-            backgroundColor: '#1e1c15',
-            scale: 2,
-            useCORS: true
-        }).then(canvas => {
-            const link = document.createElement('a');
-            link.download = `ankk-certificate-${profile.name.replace(/\s+/g,'-')}.png`;
-            link.href = canvas.toDataURL('image/png');
+        html2canvas(card, { backgroundColor:'#1e1c15', scale:2, useCORS:true }).then(canvas => {
+            const link     = document.createElement('a');
+            link.download  = `ankk-cert-${profile.name.replace(/\s+/g,'-')}.png`;
+            link.href      = canvas.toDataURL('image/png');
             link.click();
             toast('Certificate saved as image.');
         }).catch(() => toast('Could not generate image. Try screenshot.'));
@@ -840,25 +699,32 @@
 
     function shareCertText() {
         const text =
-            `Certificate of Recognition\n\n` +
-            `${profile.name}\n` +
-            `Recognition of Sincerity\n\n` +
+            `Certificate of Recognition\n\n${profile.name}\nRecognition of Sincerity\n\n` +
             `Total Ankks Earned: ${profile.balance} Ankk (ਅੰਕ)\n\n` +
-            `Witnessed by the Ankk Community\n` +
-            `in the omnipresence of Aek Onkar\n\n` +
+            `Witnessed by the Ankk Community\nin the omnipresence of Aek Onkar\n\n` +
             `As of ${new Date().toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})}`;
-
         if (navigator.share) {
-            navigator.share({ title: 'Ankk Certificate', text }).catch(() => {});
+            navigator.share({ title:'Ankk Certificate', text }).catch(() => {});
         } else {
             navigator.clipboard.writeText(text).then(() => toast('Certificate text copied.'));
         }
     }
 
-    // ── Save & Restore ────────────────────────────────────────────
+    // ── Save Name ─────────────────────────────────────────────────
+    function saveName() {
+        const n = document.getElementById('editName').value.trim();
+        if (!n) { toast('Enter a name first.'); return; }
+        profile.name = n;
+        saveAll();
+        render();
+        document.getElementById('editName').value = '';
+        toast('Name updated.');
+    }
+
+    // ── Export / Share ────────────────────────────────────────────
     function exportFile() {
         const data = buildBackup();
-        const blob = new Blob([data], { type: 'text/plain' });
+        const blob = new Blob([data], { type:'text/plain' });
         const url  = URL.createObjectURL(blob);
         const a    = document.createElement('a');
         a.href     = url;
@@ -871,32 +737,32 @@
     function shareViaApps() {
         const data = buildBackup();
         if (navigator.share) {
-            navigator.share({ title: 'Ankk Backup', text: data }).catch(() => {});
+            navigator.share({ title:'Ankk Backup', text:data }).catch(() => {});
         } else {
-            navigator.clipboard.writeText(data).then(() => toast('Backup copied. Paste it anywhere.'));
+            navigator.clipboard.writeText(data).then(() => toast('Backup copied. Paste anywhere.'));
         }
     }
 
     function buildBackup() {
-        return JSON.stringify({ v:APP_VERSION, profile, ledger, supply, claimed, adminPin,
+        return JSON.stringify({ v:APP_VERSION, profile, ledger, supply, claimed, adminPin, txCount,
             exported: new Date().toISOString() }, null, 2);
     }
 
+    // ── Restore from File ─────────────────────────────────────────
     function doRestore() {
         const raw = document.getElementById('restoreInput').value.trim();
         if (!raw) { toast('Paste your backup text first.'); return; }
         try {
-            // Support both plain backup and base64 master code
             let data;
             try { data = JSON.parse(raw); }
             catch { data = JSON.parse(atob(raw)); }
-
             if (!data.profile) throw new Error();
             profile  = data.profile;
             ledger   = data.ledger   || [];
             supply   = data.supply   || 0;
             claimed  = data.claimed  || [];
             adminPin = data.adminPin || DEFAULT_PIN;
+            txCount  = data.txCount  || 0;
             saveAll();
             document.getElementById('restoreInput').value = '';
             location.reload();
@@ -905,23 +771,32 @@
         }
     }
 
-    // ── Sync (Realtime Database) ──────────────────────────────────
+    // ── Master Recovery Code ──────────────────────────────────────
+    function showMasterCode() {
+        const master = btoa(JSON.stringify({
+            type:'ANKK_MASTER', v:APP_VERSION,
+            profile, ledger, supply, claimed, adminPin, txCount,
+            generated: new Date().toISOString()
+        }));
+        setText('masterCode', master);
+        document.getElementById('masterResult').style.display = 'block';
+        toast('Write this down or print it.');
+    }
+
+    // ── Sync ──────────────────────────────────────────────────────
     async function doSync() {
         if (!navigator.onLine) { toast('No internet. Try when online.'); return; }
         if (!window._db)       { toast('Firebase not available.'); return; }
-
         const db  = window._db;
         const rdb = window._rdb;
-
+        toast('Syncing…');
         try {
-            toast('Syncing…');
-
-            // Push unsynced local entries
+            // Push unsynced entries
             for (const e of ledger) {
                 if (!e.synced && e.code) {
                     await rdb.set(
                         rdb.ref(db, 'ankk_ledger/' + e.code),
-                        { ...e, walletId: profile.id, ts: Date.now() }
+                        { ...e, walletId:profile.id, ts:Date.now() }
                     );
                     e.synced = true;
                 }
@@ -929,13 +804,13 @@
             localStorage.setItem('ankk_ledger', JSON.stringify(ledger));
 
             // Pull entries addressed to this wallet
-            const mySig   = sig(profile.name);
-            const snapshot = await rdb.get(rdb.ref(db, 'ankk_ledger'));
+            const myFirst   = profile.name.replace(/[^A-Za-z]/g,'')[0].toUpperCase();
+            const snapshot  = await rdb.get(rdb.ref(db, 'ankk_ledger'));
             if (snapshot.exists()) {
                 snapshot.forEach(child => {
                     const data = child.val();
-                    if (data.recipientSig === mySig && !ledger.some(e => e.code === data.code)) {
-                        ledger.unshift({ ...data, synced: true });
+                    if (data.recipientFirst === myFirst && !ledger.some(e => e.code === data.code)) {
+                        ledger.unshift({ ...data, synced:true });
                         profile.balance += data.amount;
                         if (!claimed.includes(data.code)) claimed.push(data.code);
                     }
@@ -945,7 +820,7 @@
             // Save full profile snapshot for cloud restore
             await rdb.set(
                 rdb.ref(db, 'ankk_profiles/' + profile.id),
-                { profile, ledger, supply, claimed, adminPin, ts: Date.now() }
+                { profile, ledger, supply, claimed, adminPin, txCount, ts:Date.now() }
             );
 
             lastSync = today();
@@ -962,8 +837,119 @@
     // ── Network ───────────────────────────────────────────────────
     function updateNet() {
         const online = navigator.onLine;
-        document.getElementById('netDot').className     = 'dot' + (online ? ' online' : '');
-        document.getElementById('netText').textContent  = online ? 'Online' : 'Offline';
+        document.getElementById('netDot').className    = 'dot' + (online ? ' online' : '');
+        document.getElementById('netText').textContent = online ? 'Online' : 'Offline';
+    }
+
+    // ── Setup Flow ────────────────────────────────────────────────
+    function showSetup() {
+        document.getElementById('appShell').innerHTML = `
+        <div class="setup-screen">
+            <div class="setup-seal">🌾</div>
+            <div class="setup-title">Ankk · ਅੰਕ</div>
+            <div class="setup-sub">Recognition of Sincerity</div>
+            <div class="setup-btns">
+                <button class="btn btn-gold" style="flex:1;font-size:13px;" onclick="showNewUser()">I am New</button>
+                <button class="btn btn-muted" style="flex:1;font-size:13px;" onclick="showReturning()">I am Returning</button>
+            </div>
+            <div id="setupForm" style="display:none;text-align:left;">
+                <div class="field">
+                    <label class="field-label">First 3 letters of your name</label>
+                    <input type="text" id="s1" class="field-input" maxlength="3" placeholder="e.g. GUR" style="text-transform:uppercase;">
+                </div>
+                <div class="field" id="nameField">
+                    <label class="field-label">Your full name (for display)</label>
+                    <input type="text" id="sName" class="field-input" placeholder="e.g. Gurpreet Singh">
+                </div>
+                <div class="field">
+                    <label class="field-label">Last 2 digits of your phone number</label>
+                    <input type="text" id="s2" class="field-input" maxlength="2" placeholder="e.g. 47">
+                </div>
+                <div class="field">
+                    <label class="field-label">Last 2 digits of your birth year</label>
+                    <input type="text" id="s3" class="field-input" maxlength="2" placeholder="e.g. 52">
+                </div>
+                <div class="field">
+                    <label class="field-label">First letter of your birthplace</label>
+                    <input type="text" id="s4" class="field-input" maxlength="1" placeholder="e.g. A for Amritsar" style="text-transform:uppercase;">
+                </div>
+                <button class="btn btn-gold mt10" id="setupBtn" onclick="createIdentity()">Create My Record</button>
+                <div class="setup-hint" id="setupHint">
+                    Remember these 5 details — they rebuild your identity on any new phone.
+                </div>
+            </div>
+        </div>`;
+    }
+
+    function showNewUser() {
+        document.getElementById('setupForm').style.display  = 'block';
+        document.getElementById('nameField').style.display  = 'block';
+        document.getElementById('setupBtn').textContent     = 'Create My Record';
+        document.getElementById('setupBtn').onclick         = createIdentity;
+        document.getElementById('setupHint').textContent    =
+            'Remember these 5 details — they rebuild your identity on any new phone.';
+    }
+
+    function showReturning() {
+        document.getElementById('setupForm').style.display  = 'block';
+        document.getElementById('nameField').style.display  = 'none';
+        document.getElementById('setupBtn').textContent     = 'Restore My Record';
+        document.getElementById('setupBtn').onclick         = restoreIdentity;
+        document.getElementById('setupHint').textContent    =
+            'Enter the same 5 details you used when you first joined. Your record will be restored from cloud.';
+    }
+
+    function createIdentity() {
+        const p1   = document.getElementById('s1').value.trim().toUpperCase().substring(0,3);
+        const name = document.getElementById('sName').value.trim();
+        const p2   = document.getElementById('s2').value.trim().substring(0,2);
+        const p3   = document.getElementById('s3').value.trim().substring(0,2);
+        const p4   = document.getElementById('s4').value.trim().toUpperCase().substring(0,1);
+        if (!p1 || !name || !p2 || !p3 || !p4) { toast('Please fill all five fields.'); return; }
+        if (!/^\d{2}$/.test(p2) || !/^\d{2}$/.test(p3)) { toast('Phone and birth year must be 2 digits each.'); return; }
+        const id = makeId(p1 + p2 + p3 + p4);
+        profile  = { name, id, balance:0, seed: p1+p2+p3+p4 };
+        saveAll();
+        location.reload();
+    }
+
+    async function restoreIdentity() {
+        const p1 = document.getElementById('s1').value.trim().toUpperCase().substring(0,3);
+        const p2 = document.getElementById('s2').value.trim().substring(0,2);
+        const p3 = document.getElementById('s3').value.trim().substring(0,2);
+        const p4 = document.getElementById('s4').value.trim().toUpperCase().substring(0,1);
+        if (!p1 || !p2 || !p3 || !p4) { toast('Please fill all four fields.'); return; }
+        if (!/^\d{2}$/.test(p2) || !/^\d{2}$/.test(p3)) { toast('Phone and birth year must be 2 digits each.'); return; }
+        const id = makeId(p1 + p2 + p3 + p4);
+
+        if (navigator.onLine && window._db && window._rdb) {
+            toast('Checking cloud…');
+            try {
+                const snap = await window._rdb.get(window._rdb.ref(window._db, 'ankk_profiles/' + id));
+                if (snap.exists()) {
+                    const data = snap.val();
+                    profile  = data.profile;
+                    ledger   = data.ledger   || [];
+                    supply   = data.supply   || 0;
+                    claimed  = data.claimed  || [];
+                    adminPin = data.adminPin || DEFAULT_PIN;
+                    txCount  = data.txCount  || 0;
+                    saveAll();
+                    toast('Record restored from cloud. ਵਾਹਿਗੁਰੂ।');
+                    setTimeout(() => location.reload(), 1200);
+                    return;
+                } else {
+                    toast('No cloud record found. Check your details.');
+                    return;
+                }
+            } catch(e) { toast('Cloud check failed. Try again.'); return; }
+        }
+
+        // Offline — restore identity shell only
+        profile = { name: p1.charAt(0) + p1.slice(1).toLowerCase() + ' (name needed)', id, balance:0, seed:p1+p2+p3+p4 };
+        saveAll();
+        toast('Identity restored. Please update your name in Save tab.');
+        setTimeout(() => location.reload(), 1400);
     }
 
     // ── Admin Modal ───────────────────────────────────────────────
@@ -977,11 +963,9 @@
     }
     function verifyPin() {
         if (document.getElementById('pinInput').value === adminPin) {
-            closeAdminModal();
-            goTab('admin');
+            closeAdminModal(); goTab('admin');
         } else {
-            toast('Incorrect PIN.');
-            closeAdminModal();
+            toast('Incorrect PIN.'); closeAdminModal();
         }
     }
     function changePin() {
@@ -1002,9 +986,7 @@
         document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
         const pane = document.getElementById('tab-' + id);
         if (pane) pane.classList.add('active');
-        if (id === 'passbook')    renderLedger();
-        if (id === 'certificate') render();
-        if (id === 'admin')       render();
+        if (id === 'passbook' || id === 'certificate' || id === 'admin') render();
     }
 
     // ── Toast ─────────────────────────────────────────────────────
@@ -1023,33 +1005,23 @@
         localStorage.setItem('ankk_ledger',  JSON.stringify(ledger));
         localStorage.setItem('ankk_claimed', JSON.stringify(claimed));
         localStorage.setItem('ankk_supply',  supply.toString());
+        localStorage.setItem('ankk_txcount', txCount.toString());
     }
-
     function makeId(seed) {
         let h = 0;
         for (let i = 0; i < seed.length; i++) h = seed.charCodeAt(i) + ((h << 5) - h);
-        return (Math.abs(h).toString(36).toUpperCase() + 'A1B2C3').substring(0, 6);
+        return (Math.abs(h).toString(36).toUpperCase() + 'A1B2C3').substring(0,6);
     }
-
     function sig(name) {
-        const c = name.replace(/[^A-Za-z]/g, '').toUpperCase();
-        if (c.length < 2) return 'XX';
-        return c[0] + c[c.length - 1];
+        const c = name.replace(/[^A-Za-z]/g,'').toUpperCase();
+        return c.length >= 2 ? c[0] + c[c.length-1] : 'XX';
     }
-
-    function pad2(n)   { return n.toString().padStart(2, '0'); }
+    function pad2(n)   { return n.toString().padStart(2,'0'); }
     function today()   { return new Date().toLocaleDateString('en-IN'); }
-    function setText(id, val) { const e = document.getElementById(id); if (e) e.textContent = val; }
-    function safe(str) {
-        return String(str).replace(/[<>&"]/g,
-            c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
-    }
+    function setText(id, val) { const e = document.getElementById(id); if(e) e.textContent = val; }
+    function safe(str) { return String(str).replace(/[<>&"]/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])); }
 
     // ── Expose globals ────────────────────────────────────────────
-    window.createIdentity  = createIdentity;
-    window.showNewUser     = showNewUser;
-    window.showReturning   = showReturning;
-    window.restoreIdentity = restoreIdentity;
     window.doGive          = doGive;
     window.doClaim         = doClaim;
     window.doMint          = doMint;
@@ -1060,11 +1032,17 @@
     window.saveCertPng     = saveCertPng;
     window.shareCertText   = shareCertText;
     window.showMasterCode  = showMasterCode;
+    window.saveName        = saveName;
     window.goTab           = goTab;
     window.openAdminModal  = openAdminModal;
     window.closeAdminModal = closeAdminModal;
     window.verifyPin       = verifyPin;
     window.changePin       = changePin;
+    window.showNewUser     = showNewUser;
+    window.showReturning   = showReturning;
+    window.createIdentity  = createIdentity;
+    window.restoreIdentity = restoreIdentity;
+    window.restoreFromCloud= restoreFromCloud;
 </script>
 </body>
 </html>
