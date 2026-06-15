@@ -387,6 +387,14 @@
         <div style="margin-top:16px;padding:12px 14px;background:var(--input);border-radius:12px;font-size:12px;color:var(--muted);line-height:1.7;">
             ℹ️ To restore your record — use the <strong style="color:var(--gold);">Restore</strong> tab.
         </div>
+
+        <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border);">
+            <div class="section-head">Reset App</div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.6;">
+                Clears all local data and returns to setup screen. Export your backup first.
+            </div>
+            <button class="btn btn-muted" onclick="resetApp()" style="border:1px solid var(--red);color:var(--red);background:transparent;">Reset &amp; Start Fresh</button>
+        </div>
     </div>
 
     <!-- TAB: RESTORE -->
@@ -552,6 +560,12 @@
     const ADMIN_ID    = "17CCPY";
     const ALPHA       = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".split("");
 
+    // ── Force reset via ?reset=1 URL param ───────────────────────────
+    if (new URLSearchParams(window.location.search).get('reset') === '1') {
+        localStorage.clear();
+        window.location.href = window.location.pathname;
+    }
+
     // ── Version check — clear stale data on version change ──────────
     const STORED_VERSION = localStorage.getItem('ankk_version');
     if (STORED_VERSION !== APP_VERSION) {
@@ -699,6 +713,8 @@
     async function restoreFromCloud() {
         if (!window._db || !window._rdb) { toast('No cloud connection.'); return; }
         toast('Restoring from cloud…');
+        const btn = document.querySelector('.restore-banner-btn');
+        if (btn) btn.textContent = 'Restoring…';
         try {
             const snap = await window._rdb.get(
                 window._rdb.ref(window._db, 'ankk_profiles/' + profile.id)
@@ -736,21 +752,24 @@
     // ── Render ────────────────────────────────────────────────────
     function render() {
         if (!profile) return;
-        setText('uName',    profile.name);
-        setText('uId',      'ID: ' + profile.id);
-        setText('uBalance', profile.balance);
-        setText('adminSupply', supply);
-        setText('certName',  profile.name);
-        setText('certCount', profile.balance);
-        setText('certDate',  'As of ' + new Date().toLocaleDateString('en-IN',
-            { day:'numeric', month:'long', year:'numeric' }));
-        setText('lastSyncedLabel', lastSync ? 'Synced ' + lastSync : 'Never synced');
-        const nameInput = document.getElementById('editName');
-        if (nameInput) nameInput.placeholder = profile.name;
+        try { setText('uName',    profile.name); } catch(e) {}
+        try { setText('uId',      'ID: ' + profile.id); } catch(e) {}
+        try { setText('uBalance', profile.balance); } catch(e) {}
+        try { setText('adminSupply', supply); } catch(e) {}
+        try { setText('certName',  profile.name); } catch(e) {}
+        try { setText('certCount', profile.balance); } catch(e) {}
+        try { setText('certDate',  'As of ' + new Date().toLocaleDateString('en-IN',
+            { day:'numeric', month:'long', year:'numeric' })); } catch(e) {}
+        try { setText('lastSyncedLabel', lastSync ? 'Synced ' + lastSync : 'Never synced'); } catch(e) {}
+        try {
+            const nameInput = document.getElementById('editName');
+            if (nameInput) nameInput.placeholder = profile.name;
+        } catch(e) {}
         renderLedger();
     }
 
     function renderLedger() {
+        try {
         const el = document.getElementById('ledgerList');
         if (!el) return;
         if (!ledger.length) {
@@ -765,6 +784,7 @@
                 </div>
                 <div class="ledger-amt ${e.type.toLowerCase()}">${e.type === 'IN' ? '+' : '−'}${e.amount}</div>
             </div>`).join('');
+        } catch(e) { console.warn('renderLedger error:', e); }
     }
 
     // ── Give ──────────────────────────────────────────────────────
@@ -1089,25 +1109,36 @@
                     Remember these 5 details — they rebuild your identity on any new phone.
                 </div>
             </div>
+            <div style="margin-top:24px;">
+                <span onclick="resetApp()" style="font-size:10px;color:var(--border);cursor:pointer;letter-spacing:0.5px;">
+                    Reset app data
+                </span>
+            </div>
         </div>`;
     }
 
     function showNewUser() {
-        document.getElementById('setupForm').style.display  = 'block';
-        document.getElementById('nameField').style.display  = 'block';
-        document.getElementById('setupBtn').textContent     = 'Create My Record';
-        document.getElementById('setupBtn').onclick         = createIdentity;
-        document.getElementById('setupHint').textContent    =
-            'Remember these 5 details — they rebuild your identity on any new phone.';
+        const form = document.getElementById('setupForm');
+        const nf   = document.getElementById('nameField');
+        const btn  = document.getElementById('setupBtn');
+        const hint = document.getElementById('setupHint');
+        if (!form) return;
+        form.style.display = 'block';
+        if (nf)   nf.style.display   = 'block';
+        if (btn)  { btn.textContent  = 'Create My Record'; btn.onclick = createIdentity; }
+        if (hint) hint.textContent   = 'Remember these 5 details — they rebuild your identity on any new phone.';
     }
 
     function showReturning() {
-        document.getElementById('setupForm').style.display  = 'block';
-        document.getElementById('nameField').style.display  = 'none';
-        document.getElementById('setupBtn').textContent     = 'Restore My Record';
-        document.getElementById('setupBtn').onclick         = restoreIdentity;
-        document.getElementById('setupHint').textContent    =
-            'Enter the same 5 details you used when you first joined. Your record will be restored from cloud.';
+        const form = document.getElementById('setupForm');
+        const nf   = document.getElementById('nameField');
+        const btn  = document.getElementById('setupBtn');
+        const hint = document.getElementById('setupHint');
+        if (!form) return;
+        form.style.display = 'block';
+        if (nf)   nf.style.display   = 'none';
+        if (btn)  { btn.textContent  = 'Restore My Record'; btn.onclick = restoreIdentity; }
+        if (hint) hint.textContent   = 'Enter the same 5 details you used when you first joined. Your record will be restored from cloud.';
     }
 
     function createIdentity() {
@@ -1229,8 +1260,11 @@
         return (Math.abs(h).toString(36).toUpperCase() + 'A1B2C3').substring(0,6);
     }
     function sig(name) {
-        const c = name.replace(/[^A-Za-z]/g,'').toUpperCase();
-        return c.length >= 2 ? c[0] + c[c.length-1] : 'XX';
+        if (!name) return 'XX';
+        const s = name.replace(/[^A-Za-z]/g,'').toUpperCase();
+        if (s.length === 0) return 'XX';
+        if (s.length === 1) return s + s;
+        return s[0] + s[s.length-1];
     }
     function pad2(n)   { return n.toString().padStart(2,'0'); }
     function today()   { return new Date().toLocaleDateString('en-IN'); }
@@ -1238,6 +1272,14 @@
     function safe(str) { return String(str).replace(/[<>&"]/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])); }
 
     // ── Expose globals ────────────────────────────────────────────
+    // ── Reset App ─────────────────────────────────────────────────
+    function resetApp() {
+        if (confirm('This will clear ALL local data including your balance and passbook. Export your backup first. Continue?')) {
+            localStorage.clear();
+            location.href = location.pathname + '?reset=1';
+        }
+    }
+
     // ── Share App ─────────────────────────────────────────────────
     function shareApp() {
         const url  = 'https://singhkamaljit.github.io/Ankk/';
@@ -1356,6 +1398,7 @@
     window.loadAdminTx     = loadAdminTx;
     window.autoSync        = autoSync;
     window.shareApp        = shareApp;
+    window.resetApp        = resetApp;
     window.loadTop100      = loadTop100;
     window.doSyncSilent    = doSyncSilent;
 </script>
