@@ -388,6 +388,15 @@
             ℹ️ To restore your record — use the <strong style="color:var(--gold);">Restore</strong> tab.
         </div>
 
+        <!-- NEWLY INTEGRATED PROFILE DISCONNECT/LOG OUT BUTTON ACTION -->
+        <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+            <div class="section-head">Session Control</div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.6;">
+                Logs out of the current user profile context safely. Make sure you have synced or downloaded your backup text first.
+            </div>
+            <button class="btn btn-muted" onclick="doLogout()" style="border:1px solid var(--gold);color:var(--gold);background:transparent;">Log Out Current Profile</button>
+        </div>
+
         <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border);">
             <div class="section-head">Reset App</div>
             <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.6;">
@@ -410,7 +419,19 @@
             </div>
         </div>
 
-        <!-- File / Text Restore -->
+        <!-- File Upload Restore -->
+        <div class="save-row" onclick="document.getElementById('fileFileInput').click()">
+            <div class="save-icon">📂</div>
+            <div>
+                <div class="save-label">Upload Backup File</div>
+                <div class="save-sub">Select the .txt backup file from your device storage.</div>
+            </div>
+        </div>
+        <input type="file" id="fileFileInput" accept=".txt" style="display:none;" onchange="handleFileSelect(event)">
+
+        <div class="save-divider">— OR —</div>
+
+        <!-- Text Restore -->
         <div style="margin-top:4px;">
             <div class="save-row" onclick="document.getElementById('restoreInput').focus()">
                 <div class="save-icon">📋</div>
@@ -519,7 +540,16 @@
 
 <script>
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('ankk-sw.js').catch(() => {});
+        navigator.serviceWorker.getRegistrations().then(registrations => {
+            const unregisterAll = registrations.map(r => r.unregister());
+            Promise.all(unregisterAll).then(() => {
+                caches.keys().then(keys =>
+                    Promise.all(keys.map(k => caches.delete(k)))
+                ).then(() => {
+                    navigator.serviceWorker.register('ankk-sw.js?v=ankk-v4').catch(() => {});
+                });
+            });
+        });
     }
 </script>
 
@@ -554,26 +584,22 @@
 
 <!-- App Logic -->
 <script>
-    // ── Constants ─────────────────────────────────────────────────
     const APP_VERSION = "ankk-v4";
     const DEFAULT_PIN = "0987";
     const ADMIN_ID    = "17CCPY";
     const ALPHA       = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".split("");
 
-    // ── Force reset via ?reset=1 URL param ───────────────────────────
     if (new URLSearchParams(window.location.search).get('reset') === '1') {
         localStorage.clear();
         window.location.href = window.location.pathname;
     }
 
-    // ── Version check — clear stale data on version change ──────────
     const STORED_VERSION = localStorage.getItem('ankk_version');
     if (STORED_VERSION !== APP_VERSION) {
         localStorage.clear();
         localStorage.setItem('ankk_version', APP_VERSION);
     }
 
-    // ── State ─────────────────────────────────────────────────────────
     let profile  = JSON.parse(localStorage.getItem('ankk_profile'))  || null;
     let ledger   = JSON.parse(localStorage.getItem('ankk_ledger'))   || [];
     let supply   = parseInt(localStorage.getItem('ankk_supply'))     || 0;
@@ -583,7 +609,6 @@
     let txCount  = parseInt(localStorage.getItem('ankk_txcount'))    || 0;
     let phone    = localStorage.getItem('ankk_phone')                  || '';
 
-    // ── Boot ──────────────────────────────────────────────────────
     window.addEventListener('DOMContentLoaded', () => {
         if (!profile) { showSetup(); return; }
         injectAdminTab();
@@ -594,15 +619,14 @@
         window.addEventListener('online',  updateNet);
         window.addEventListener('offline', updateNet);
         updateNet();
-    }
+    });
 
-    // ── Auto Sync — silent, max 4x per day (6hr gap) ─────────────
     async function autoSync() {
         if (!navigator.onLine || !window._db) return;
         const SIX_HOURS = 6 * 60 * 60 * 1000;
         const lastSyncTs = parseInt(localStorage.getItem('ankk_last_sync_ts')) || 0;
         const now        = Date.now();
-        if (now - lastSyncTs < SIX_HOURS) return; // too soon
+        if (now - lastSyncTs < SIX_HOURS) return;
         await doSyncSilent();
     }
 
@@ -611,7 +635,6 @@
         const db  = window._db;
         const rdb = window._rdb;
         try {
-            // Push unsynced entries
             for (const e of ledger) {
                 if (!e.synced && e.code) {
                     await rdb.set(
@@ -623,7 +646,6 @@
             }
             localStorage.setItem('ankk_ledger', JSON.stringify(ledger));
 
-            // Pull entries addressed to this wallet
             const myFirst  = profile.name.replace(/[^A-Za-z]/g,'')[0].toUpperCase();
             const snapshot = await rdb.get(rdb.ref(db, 'ankk_ledger'));
             if (snapshot.exists()) {
@@ -637,7 +659,6 @@
                 });
             }
 
-            // Recalculate balance from verified ledger entries
             const calcBalance = ledger.reduce((sum, e) => {
                 return e.type === 'IN' ? sum + e.amount : sum - e.amount;
             }, 0);
@@ -645,7 +666,6 @@
                 profile.balance = Math.max(0, calcBalance);
             }
 
-            // Save profile snapshot
             await rdb.set(
                 rdb.ref(db, 'ankk_profiles/' + profile.id),
                 { profile, ledger, supply, claimed, adminPin, txCount, phone, ts:Date.now() }
@@ -655,19 +675,16 @@
             localStorage.setItem('ankk_last_sync', lastSync);
             localStorage.setItem('ankk_last_sync_ts', Date.now().toString());
             saveAll();
-            render(); // update "Last synced" label silently
+            render();
         } catch(e) {
-            // Silent failure on auto sync
             console.warn('Auto sync failed:', e);
         }
-    });
+    }
 
-    // ── Phone Prompt ──────────────────────────────────────────────
     function checkPhonePrompt() {
         if (!phone) {
             document.getElementById('phonePrompt').classList.add('open');
         }
-        // Also prompt if name looks like a restore placeholder
         if (profile && profile.name && profile.name.includes('(')) {
             const nameBox = document.createElement('div');
             nameBox.style.cssText = 'background:var(--gold-soft);border:1px solid var(--gold);border-radius:10px;padding:12px 14px;margin:10px 18px;font-size:12px;color:var(--cream);';
@@ -696,10 +713,9 @@
         }
     }
 
-    // ── Cloud Restore Check ───────────────────────────────────────
     async function checkCloudRestore() {
         if (!navigator.onLine || !window._db || !window._rdb) return;
-        if (lastSync) return; // already synced before — no need for banner
+        if (lastSync) return;
         try {
             const snap = await window._rdb.get(
                 window._rdb.ref(window._db, 'ankk_profiles/' + profile.id)
@@ -738,7 +754,6 @@
         }
     }
 
-    // ── Admin Tab Injection ───────────────────────────────────────
     function injectAdminTab() {
         if (!profile || profile.id !== ADMIN_ID) return;
         const nav = document.getElementById('tabNav');
@@ -749,7 +764,6 @@
         nav.appendChild(btn);
     }
 
-    // ── Render ────────────────────────────────────────────────────
     function render() {
         if (!profile) return;
         try { setText('uName',    profile.name); } catch(e) {}
@@ -758,36 +772,30 @@
         try { setText('adminSupply', supply); } catch(e) {}
         try { setText('certName',  profile.name); } catch(e) {}
         try { setText('certCount', profile.balance); } catch(e) {}
-        try { setText('certDate',  'As of ' + new Date().toLocaleDateString('en-IN',
-            { day:'numeric', month:'long', year:'numeric' })); } catch(e) {}
+        try { setText('certDate',  'As of ' + new Date().toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' })); } catch(e) {}
         try { setText('lastSyncedLabel', lastSync ? 'Synced ' + lastSync : 'Never synced'); } catch(e) {}
-        try {
-            const nameInput = document.getElementById('editName');
-            if (nameInput) nameInput.placeholder = profile.name;
-        } catch(e) {}
         renderLedger();
     }
 
     function renderLedger() {
         try {
-        const el = document.getElementById('ledgerList');
-        if (!el) return;
-        if (!ledger.length) {
-            el.innerHTML = '<div class="empty-state">No entries yet.<br>Your record begins with the first Ankk.</div>';
-            return;
-        }
-        el.innerHTML = ledger.map(e => `
-            <div class="ledger-item ${e.type.toLowerCase()}">
-                <div>
-                    <div class="ledger-party">${safe(e.type === 'IN' ? '↓ From ' + e.party : '↑ To ' + e.party)}</div>
-                    <div class="ledger-meta">${safe(e.date)} · ${e.synced ? '☁ Synced' : '◎ Local'}</div>
-                </div>
-                <div class="ledger-amt ${e.type.toLowerCase()}">${e.type === 'IN' ? '+' : '−'}${e.amount}</div>
-            </div>`).join('');
+            const el = document.getElementById('ledgerList');
+            if (!el) return;
+            if (!ledger.length) {
+                el.innerHTML = '<div class="empty-state">No entries yet.<br>Your record begins with the first Ankk.</div>';
+                return;
+            }
+            el.innerHTML = ledger.map(e => `
+                <div class="ledger-item ${e.type.toLowerCase()}">
+                    <div>
+                        <div class="ledger-party">${safe(e.type === 'IN' ? '↓ From ' + e.party : '↑ To ' + e.party)}</div>
+                        <div class="ledger-meta">${safe(e.date)} · ${e.synced ? '☁ Synced' : '◎ Local'}</div>
+                    </div>
+                    <div class="ledger-amt ${e.type.toLowerCase()}">${e.type === 'IN' ? '+' : '−'}${e.amount}</div>
+                </div>`).join('');
         } catch(e) { console.warn('renderLedger error:', e); }
     }
 
-    // ── Give ──────────────────────────────────────────────────────
     function doGive() {
         const name   = document.getElementById('giveName').value.trim();
         const amount = parseInt(document.getElementById('giveAmt').value);
@@ -804,7 +812,6 @@
         toast('Recognition code ready.');
     }
 
-    // ── Claim ─────────────────────────────────────────────────────
     function doClaim() {
         const raw  = stripSpaces(document.getElementById('receiveCode').value.trim().toUpperCase());
         if (!raw || raw.length < 14) { toast('Paste a valid recognition code.'); return; }
@@ -813,11 +820,9 @@
         const parsed = parseCode(raw);
         if (!parsed) { toast('Code could not be read. Check and try again.'); return; }
 
-        // First letter check — basic sanity, not hard rejection for wrong name
         const myFirst = profile.name.replace(/[^A-Za-z]/g,'')[0].toUpperCase();
         if (parsed.recipientFirst && parsed.recipientFirst !== myFirst) {
             toast('This code appears to be for someone else (' + parsed.recipientFirst + '). Continue anyway?');
-            // Give a second chance — soft warning only
         }
 
         profile.balance += parsed.amount;
@@ -830,7 +835,6 @@
         toast('+' + parsed.amount + ' Ankk received. ਧੰਨਵਾਦ।');
     }
 
-    // ── Admin Mint ────────────────────────────────────────────────
     function doMint() {
         const name   = document.getElementById('mintName').value.trim();
         const amount = parseInt(document.getElementById('mintAmt').value);
@@ -838,7 +842,6 @@
 
         const code = buildCode('M', name, amount);
         supply += amount;
-        // No OUT ledger entry — minting creates Ankks, not a transfer from admin balance
         localStorage.setItem('ankk_supply', supply.toString());
         saveAll();
         setText('mintCode', code);
@@ -847,9 +850,6 @@
         toast('Ankks granted. Read the code to recipient.');
     }
 
-    // ── Code Builder — 16 chars in blocks of 4 ───────────────────
-    // Structure: PREFIX(1) + DATE(4) + NONCE(1) + AMOUNT(5) + SENDERSIG(2) + RECIPFIRST(1) + COUNTER(2)
-    // = 16 chars displayed as XXXX XXXX XXXX XXXX
     function buildCode(prefix, recipientName, amount) {
         const d         = new Date();
         const dateBlock = pad2(d.getDate()) + pad2(d.getMonth() + 1);
@@ -883,14 +883,16 @@
         } catch { return null; }
     }
 
-    // Format as blocks of 4: XXXX XXXX XXXX XXXX
     function formatCode(raw) {
         const s = stripSpaces(raw);
         return s.match(/.{1,4}/g).join(' ');
     }
     function stripSpaces(s) { return s.replace(/[\s\-]/g, ''); }
 
-    // ── Cipher ────────────────────────────────────────────────────
+    document.querySelectorAll('.restore-area').forEach(element => {
+         element.addEventListener('focus', () => { window.scrollBy(0, 80); });
+    });
+
     function cipher(text, shift, reverse) {
         const s = reverse
             ? (ALPHA.length - (shift % ALPHA.length)) % ALPHA.length
@@ -901,7 +903,6 @@
         }).join('');
     }
 
-    // ── Certificate PNG ───────────────────────────────────────────
     function saveCertPng() {
         const card = document.getElementById('certCard');
         toast('Preparing image…');
@@ -916,9 +917,19 @@
 
     function shareCertText() {
         const text =
-            `Certificate of Recognition\n\n${profile.name}\nRecognition of Sincerity\n\n` +
-            `Total Ankks Earned: ${profile.balance} Ankk (ਅੰਕ)\n\n` +
-            `Witnessed by the Ankk Community\nin the omnipresence of Aek Onkar\n\n` +
+            `Certificate of Recognition
+
+${profile.name}
+Recognition of Sincerity
+
+` +
+            `Total Ankks Earned: ${profile.balance} Ankk (ਅੰਕ)
+
+` +
+            `Witnessed by the Ankk Community
+in the omnipresence of Aek Onkar
+
+` +
             `As of ${new Date().toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})}`;
         if (navigator.share) {
             navigator.share({ title:'Ankk Certificate', text }).catch(() => {});
@@ -927,28 +938,35 @@
         }
     }
 
-    // ── Save Name ─────────────────────────────────────────────────
     function saveName() {
         const n = document.getElementById('editName').value.trim();
         if (!n) { toast('Enter a name first.'); return; }
         profile.name = n;
         saveAll();
         render();
-        document.getElementById('editName').value = '';
         toast('Name updated.');
     }
 
-    // ── Export / Share ────────────────────────────────────────────
     function exportFile() {
         const data = buildBackup();
-        const blob = new Blob([data], { type:'text/plain' });
-        const url  = URL.createObjectURL(blob);
-        const a    = document.createElement('a');
-        a.href     = url;
-        a.download = `ankk-backup-${profile.id}.txt`;
-        a.click();
-        URL.revokeObjectURL(url);
-        toast('Backup saved to device.');
+        try {
+            const blob = new Blob([data], { type:'text/plain' });
+            const url  = URL.createObjectURL(blob);
+            const a    = document.createElement('a');
+            a.href     = url;
+            a.download = `ankk-backup-${profile.id}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            toast('Backup saved to device.');
+        } catch(err) {
+            navigator.clipboard.writeText(data).then(() => {
+                toast('Download restricted. Copied string to clipboard!');
+            }).catch(() => {
+                toast('Export operation failed.');
+            });
+        }
     }
 
     function shareViaApps() {
@@ -961,22 +979,31 @@
     }
 
     function buildBackup() {
-        const raw = JSON.stringify({ v:APP_VERSION, profile, ledger, supply, claimed, adminPin, txCount, phone,
-            exported: new Date().toISOString() });
+        const raw = JSON.stringify({ v:APP_VERSION, profile, ledger, supply, claimed, adminPin, txCount, phone, exported: new Date().toISOString() });
         return 'ANKK:' + btoa(raw);
     }
 
-    // ── Restore from File ─────────────────────────────────────────
-    function doRestore() {
-        const raw = document.getElementById('restoreInput').value.trim();
-        if (!raw) { toast('Paste your backup text first.'); return; }
+    function handleFileSelect(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const contents = e.target.result.trim();
+            processRestoreData(contents);
+        };
+        reader.onerror = function() { toast('Could not read file.'); };
+        reader.readAsText(file);
+    }
+
+    function processRestoreData(rawString) {
         try {
             let data;
             try {
-                // Handle ANKK: prefixed base64 backup
-                const src = raw.startsWith('ANKK:') ? atob(raw.slice(5)) : raw;
+                const src = rawString.startsWith('ANKK:') ? atob(rawString.slice(5)) : rawString;
                 data = JSON.parse(src);
-            } catch { data = JSON.parse(atob(raw)); }
+            } catch { 
+                data = JSON.parse(atob(rawString)); 
+            }
             if (!data.profile) throw new Error();
             profile  = data.profile;
             ledger   = data.ledger   || [];
@@ -985,29 +1012,44 @@
             adminPin = data.adminPin || DEFAULT_PIN;
             txCount  = data.txCount  || 0;
             phone    = data.phone    || '';
-            // Keep only last 10 ledger entries on file restore
             if (ledger.length > 10) ledger = ledger.slice(0, 10);
             saveAll();
-            document.getElementById('restoreInput').value = '';
-            location.reload();
+            toast('Record restored successfully!');
+            setTimeout(() => location.reload(), 1200);
         } catch {
-            toast('Could not read backup. Check the text and try again.');
+            toast('Invalid backup data structure.');
         }
     }
 
-    // ── Master Recovery Code ──────────────────────────────────────
+    function doRestore() {
+        const raw = document.getElementById('restoreInput').value.trim();
+        if (!raw) { toast('Paste your backup text first.'); return; }
+        processRestoreData(raw);
+        document.getElementById('restoreInput').value = '';
+    }
+
+    /* SAFE EXIT LOG OUT PROMPT AND CONTEXT ACTION */
+    function doLogout() {
+        if (confirm('Are you sure you want to Log Out? Local session credentials will be cleared. Ensure your profile has been safely backed up via File Export or Text Backup to prevent entry logs from being lost!')) {
+            localStorage.removeItem('ankk_profile');
+            localStorage.removeItem('ankk_ledger');
+            localStorage.removeItem('ankk_claimed');
+            localStorage.removeItem('ankk_last_sync');
+            localStorage.removeItem('ankk_last_sync_ts');
+            localStorage.removeItem('ankk_txcount');
+            localStorage.removeItem('ankk_phone');
+            toast('Logged out successfully.');
+            setTimeout(() => { location.reload(); }, 1000);
+        }
+    }
+
     function showMasterCode() {
-        const master = btoa(JSON.stringify({
-            type:'ANKK_MASTER', v:APP_VERSION,
-            profile, ledger, supply, claimed, adminPin, txCount,
-            generated: new Date().toISOString()
-        }));
+        const master = btoa(JSON.stringify({ type:'ANKK_MASTER', v:APP_VERSION, profile, ledger, supply, claimed, adminPin, txCount, generated: new Date().toISOString() }));
         setText('masterCode', master);
         document.getElementById('masterResult').style.display = 'block';
         toast('Write this down or print it.');
     }
 
-    // ── Sync ──────────────────────────────────────────────────────
     async function doSync() {
         if (!navigator.onLine) { toast('No internet. Try when online.'); return; }
         if (!window._db)       { toast('Firebase not available.'); return; }
@@ -1015,7 +1057,6 @@
         const rdb = window._rdb;
         toast('Syncing…');
         try {
-            // Push unsynced entries
             for (const e of ledger) {
                 if (!e.synced && e.code) {
                     await rdb.set(
@@ -1027,7 +1068,6 @@
             }
             localStorage.setItem('ankk_ledger', JSON.stringify(ledger));
 
-            // Pull entries addressed to this wallet
             const myFirst   = profile.name.replace(/[^A-Za-z]/g,'')[0].toUpperCase();
             const snapshot  = await rdb.get(rdb.ref(db, 'ankk_ledger'));
             if (snapshot.exists()) {
@@ -1041,7 +1081,6 @@
                 });
             }
 
-            // Save full profile snapshot for cloud restore
             await rdb.set(
                 rdb.ref(db, 'ankk_profiles/' + profile.id),
                 { profile, ledger, supply, claimed, adminPin, txCount, phone, ts:Date.now() }
@@ -1050,9 +1089,7 @@
             lastSync = today();
             localStorage.setItem('ankk_last_sync', lastSync);
             localStorage.setItem('ankk_last_sync_ts', Date.now().toString());
-            // Recalculate balance from verified ledger entries
-            const calcBal = ledger.reduce((sum, e) =>
-                e.type === 'IN' ? sum + e.amount : sum - e.amount, 0);
+            const calcBal = ledger.reduce((sum, e) => e.type === 'IN' ? sum + e.amount : sum - e.amount, 0);
             if (calcBal !== profile.balance) {
                 profile.balance = Math.max(0, calcBal);
             }
@@ -1065,14 +1102,12 @@
         }
     }
 
-    // ── Network ───────────────────────────────────────────────────
     function updateNet() {
         const online = navigator.onLine;
         document.getElementById('netDot').className    = 'dot' + (online ? ' online' : '');
         document.getElementById('netText').textContent = online ? 'Online' : 'Offline';
     }
 
-    // ── Setup Flow ────────────────────────────────────────────────
     function showSetup() {
         document.getElementById('appShell').innerHTML = `
         <div class="setup-screen">
@@ -1187,14 +1222,12 @@
             } catch(e) { toast('Cloud check failed. Try again.'); return; }
         }
 
-        // Offline — restore identity shell only
         profile = { name: p1.charAt(0) + p1.slice(1).toLowerCase() + ' (name needed)', id, balance:0, seed:p1+p2+p3+p4 };
         saveAll();
         toast('Identity restored. Please update your name in Save tab.');
         setTimeout(() => location.reload(), 1400);
     }
 
-    // ── Admin Modal ───────────────────────────────────────────────
     function openAdminModal() {
         document.getElementById('pinInput').value = '';
         document.getElementById('adminModal').classList.add('open');
@@ -1219,11 +1252,9 @@
         toast('PIN updated.');
     }
 
-    // ── Tabs ──────────────────────────────────────────────────────
     function goTab(id) {
         document.querySelectorAll('.tab-btn').forEach(b => {
-            b.classList.toggle('active', b.textContent.toLowerCase() === id ||
-                (id === 'admin' && b.textContent === 'Admin'));
+            b.classList.toggle('active', b.textContent.toLowerCase() === id || (id === 'admin' && b.textContent === 'Admin'));
         });
         document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
         const pane = document.getElementById('tab-' + id);
@@ -1232,7 +1263,6 @@
         if (id === 'restore') { document.getElementById('restoreBanner').classList.remove('show'); }
     }
 
-    // ── Toast ─────────────────────────────────────────────────────
     function toast(msg) {
         const el = document.getElementById('toast');
         if (!el) return;
@@ -1242,7 +1272,6 @@
         el._t = setTimeout(() => el.classList.remove('show'), 2800);
     }
 
-    // ── Helpers ───────────────────────────────────────────────────
     function saveAll() {
         localStorage.setItem('ankk_profile', JSON.stringify(profile));
         localStorage.setItem('ankk_ledger',  JSON.stringify(ledger));
@@ -1250,7 +1279,6 @@
         localStorage.setItem('ankk_supply',  supply.toString());
         localStorage.setItem('ankk_txcount', txCount.toString());
         if (phone) localStorage.setItem('ankk_phone', phone);
-        // Keep ledger to last 100 entries
         if (ledger.length > 100) ledger = ledger.slice(0, 100);
         localStorage.setItem('ankk_ledger', JSON.stringify(ledger));
     }
@@ -1271,8 +1299,6 @@
     function setText(id, val) { const e = document.getElementById(id); if(e) e.textContent = val; }
     function safe(str) { return String(str).replace(/[<>&"]/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])); }
 
-    // ── Expose globals ────────────────────────────────────────────
-    // ── Reset App ─────────────────────────────────────────────────
     function resetApp() {
         if (confirm('This will clear ALL local data including your balance and passbook. Export your backup first. Continue?')) {
             localStorage.clear();
@@ -1280,20 +1306,17 @@
         }
     }
 
-    // ── Share App ─────────────────────────────────────────────────
     function shareApp() {
         const url  = 'https://singhkamaljit.github.io/Ankk/';
-        const text = 'Join me on Ankk — Recognition of Sincerity\n' + url;
+        const text = 'Join me on Ankk — Recognition of Sincerity
+' + url;
         if (navigator.share) {
             navigator.share({ title:'Ankk · ਅੰਕ', text, url }).catch(() => {});
         } else {
-            navigator.clipboard.writeText(text).then(() =>
-                toast('Invite link copied. Share it with someone you trust.')
-            );
+            navigator.clipboard.writeText(text).then(() => toast('Invite link copied. Share it with someone you trust.'));
         }
     }
 
-    // ── Top 100 Ankk Holders ──────────────────────────────────────
     async function loadTop100() {
         if (!navigator.onLine || !window._db) { toast('Need internet to load holders.'); return; }
         const el = document.getElementById('top100List');
@@ -1341,7 +1364,6 @@
         }
     }
 
-    // ── Admin Tx Ledger ───────────────────────────────────────────
     async function loadAdminTx() {
         if (!navigator.onLine || !window._db) { toast('Need internet to load network ledger.'); return; }
         const el = document.getElementById('adminTxList');
@@ -1351,7 +1373,6 @@
             if (!snap.exists()) { el.innerHTML = '<div style="color:var(--muted);font-size:12px;">No network transactions yet.</div>'; return; }
             const entries = [];
             snap.forEach(child => entries.push(child.val()));
-            // Sort newest first, cap at 500
             entries.sort((a,b) => (b.ts||0) - (a.ts||0));
             const top500 = entries.slice(0, 500);
             el.innerHTML = top500.map(e => `
@@ -1401,6 +1422,8 @@
     window.resetApp        = resetApp;
     window.loadTop100      = loadTop100;
     window.doSyncSilent    = doSyncSilent;
+    window.handleFileSelect = handleFileSelect;
+    window.doLogout        = doLogout;
 </script>
 </body>
 </html>
