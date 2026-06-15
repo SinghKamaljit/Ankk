@@ -1,6 +1,6 @@
 // Ankk Service Worker
 // Bump this version string to force cache refresh on all users
-const CACHE_VERSION = 'ankk-v2';
+const CACHE_VERSION = 'ankk-v4';
 const CACHE_NAME    = `ankk-cache-${CACHE_VERSION}`;
 
 const ASSETS = [
