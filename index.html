@@ -260,7 +260,10 @@
                 <div class="user-name" id="uName">—</div>
                 <div class="user-id" id="uId">ID: ——</div>
             </div>
-            <div class="tagline">Recognition<br>of Sincerity</div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+                <div class="tagline">Recognition<br>of Sincerity</div>
+                <button onclick="shareApp()" style="background:transparent;border:1px solid var(--gold);border-radius:8px;padding:4px 10px;cursor:pointer;font-size:11px;color:var(--gold);font-weight:700;letter-spacing:0.5px;">&#x2B06; Invite</button>
+            </div>
         </div>
         <div class="balance-row">
             <span class="balance-num" id="uBalance">0</span>
@@ -455,6 +458,14 @@
             <div class="code-block" id="masterCode" style="color:var(--gold);font-size:11px;letter-spacing:0;word-break:break-all;">—</div>
         </div>
         <hr class="sep">
+        <div class="section-head">Top 100 Ankk Holders</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.5;">
+            Sorted by balance. Updates as users sync.
+        </div>
+        <button class="btn btn-muted" onclick="loadTop100()" style="margin-bottom:12px;">Load Top 100</button>
+        <div id="top100List"></div>
+
+        <hr class="sep">
         <div class="section-head">Network Transaction Ledger</div>
         <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.5;">
             Last 500 transactions across the network. Pulled from cloud.
@@ -541,7 +552,14 @@
     const ADMIN_ID    = "17CCPY";
     const ALPHA       = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".split("");
 
-    // ── State ─────────────────────────────────────────────────────
+    // ── Version check — clear stale data on version change ──────────
+    const STORED_VERSION = localStorage.getItem('ankk_version');
+    if (STORED_VERSION !== APP_VERSION) {
+        localStorage.clear();
+        localStorage.setItem('ankk_version', APP_VERSION);
+    }
+
+    // ── State ─────────────────────────────────────────────────────────
     let profile  = JSON.parse(localStorage.getItem('ankk_profile'))  || null;
     let ledger   = JSON.parse(localStorage.getItem('ankk_ledger'))   || [];
     let supply   = parseInt(localStorage.getItem('ankk_supply'))     || 0;
@@ -1220,6 +1238,67 @@
     function safe(str) { return String(str).replace(/[<>&"]/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])); }
 
     // ── Expose globals ────────────────────────────────────────────
+    // ── Share App ─────────────────────────────────────────────────
+    function shareApp() {
+        const url  = 'https://singhkamaljit.github.io/Ankk/';
+        const text = 'Join me on Ankk — Recognition of Sincerity\n' + url;
+        if (navigator.share) {
+            navigator.share({ title:'Ankk · ਅੰਕ', text, url }).catch(() => {});
+        } else {
+            navigator.clipboard.writeText(text).then(() =>
+                toast('Invite link copied. Share it with someone you trust.')
+            );
+        }
+    }
+
+    // ── Top 100 Ankk Holders ──────────────────────────────────────
+    async function loadTop100() {
+        if (!navigator.onLine || !window._db) { toast('Need internet to load holders.'); return; }
+        const el = document.getElementById('top100List');
+        el.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:10px 0;">Loading…</div>';
+        try {
+            const snap = await window._rdb.get(window._rdb.ref(window._db, 'ankk_profiles'));
+            if (!snap.exists()) {
+                el.innerHTML = '<div style="color:var(--muted);font-size:12px;">No profiles synced yet.</div>';
+                return;
+            }
+            const holders = [];
+            snap.forEach(child => {
+                const data = child.val();
+                if (data.profile) {
+                    holders.push({
+                        name:     data.profile.name    || '?',
+                        balance:  data.profile.balance || 0,
+                        phone:    data.phone           || 'not recorded',
+                        id:       data.profile.id      || '?',
+                        lastSync: data.ts ? new Date(data.ts).toLocaleDateString('en-IN') : '?'
+                    });
+                }
+            });
+            holders.sort((a, b) => b.balance - a.balance);
+            const top100 = holders.slice(0, 100);
+            if (!top100.length) {
+                el.innerHTML = '<div style="color:var(--muted);font-size:12px;">No data yet.</div>';
+                return;
+            }
+            el.innerHTML = top100.map((h, i) => `
+                <div class="atx-item" style="border-left-color:${i < 3 ? 'var(--gold)' : 'var(--border)'}">
+                    <div class="atx-top">
+                        <span class="atx-name">${i+1}. ${safe(h.name)}</span>
+                        <span class="atx-amt">${h.balance} Ankk</span>
+                    </div>
+                    <div class="atx-meta">
+                        ID: ${safe(h.id)} &nbsp;·&nbsp; Phone: ${safe(h.phone)}<br>
+                        Last sync: ${safe(h.lastSync)}
+                    </div>
+                </div>`).join('');
+            toast('Loaded ' + top100.length + ' holders.');
+        } catch(e) {
+            console.error(e);
+            el.innerHTML = '<div style="color:var(--red);font-size:12px;">Failed to load. Try again.</div>';
+        }
+    }
+
     // ── Admin Tx Ledger ───────────────────────────────────────────
     async function loadAdminTx() {
         if (!navigator.onLine || !window._db) { toast('Need internet to load network ledger.'); return; }
@@ -1276,6 +1355,8 @@
     window.promptNameFix   = promptNameFix;
     window.loadAdminTx     = loadAdminTx;
     window.autoSync        = autoSync;
+    window.shareApp        = shareApp;
+    window.loadTop100      = loadTop100;
     window.doSyncSilent    = doSyncSilent;
 </script>
 </body>
