@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ankk-v1';
+const CACHE_NAME = 'ankk-v2';
 const ASSETS = [
   './index.html',
   './ankk-manifest.json',

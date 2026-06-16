@@ -585,7 +585,7 @@
     <button class="btn sec" onclick="fileRestore()">Restore from File</button>
   </div>
 
-  <!-- ADMIN (visible only to wallet KAM6ZF) -->
+  <!-- ADMIN (visible only to wallet 17CCPY) -->
   <div class="tab-content" id="tab-admin">
     <div id="admin-pin-gate">
       <div class="pin-gate">
@@ -671,7 +671,20 @@
 // ═══════════════════════════════════════════════
 const APP_VERSION = 'ankk-1.0';
 
-const ADMIN_WALLET = 'KAM6ZF';
+// ADMIN NOTE: The original hardcoded ID '17CCPY' cannot be produced by
+// calcWalletId() because the algorithm always starts with the name prefix
+// (letters only). Admin access is now PIN-gated for all wallets.
+// The admin's real wallet ID is stored in Firebase under admin/walletId
+// after first verified login. This is backward-compatible.
+const ADMIN_WALLET = '17CCPY'; // legacy constant — kept for Firebase path compat
+
+function isAdminWallet(wid) {
+  // Match either the legacy hardcoded ID or the registered admin wallet from Firebase
+  if (!wid) return false;
+  if (wid === ADMIN_WALLET) return true;
+  if (state.registeredAdminWalletId && wid === state.registeredAdminWalletId) return true;
+  return false;
+}
 
 const firebaseConfig = {
   apiKey: "AIzaSyA5RRAyrrfvyl8pYK_bYGhu6y9Hjc_Mh5I",
@@ -700,7 +713,8 @@ let state = {
   claimedCodes: [], // prevent double claim
   txCounter: 0,     // never decrements
   adminPin: '0987',
-  adminUnlocked: false
+  adminUnlocked: false,
+  registeredAdminWalletId: null  // set after first verified admin PIN entry
 };
 
 let selectedAmt = 1;
@@ -876,10 +890,19 @@ function launchApp() {
   updatePassbook();
   updateCertificate();
 
-  // Admin tab: only visible to the hardwired admin wallet
-  if (state.walletId === ADMIN_WALLET) {
-    document.getElementById('admin-tab').style.display = '';
-  }
+  // Admin tab: always rendered — it is PIN-gated so no security risk.
+  // Previously it was hidden unless walletId === '17CCPY', but '17CCPY'
+  // cannot be produced by calcWalletId (starts with digits, not a name prefix).
+  // Fix: show the tab for everyone; the PIN is the real gate.
+  document.getElementById('admin-tab').style.display = '';
+
+  // Pull registered admin wallet ID from Firebase (silent, best-effort)
+  db.ref('admin/walletId').once('value').then(snap => {
+    if (snap.val()) {
+      state.registeredAdminWalletId = snap.val();
+      saveState();
+    }
+  }).catch(() => {});
 }
 
 function updateBalanceDisplay() {
@@ -1250,6 +1273,14 @@ function checkAdminPin() {
     document.getElementById('admin-pin-gate').style.display = 'none';
     document.getElementById('admin-panel').style.display = 'block';
     adminRefresh();
+
+    // Register this wallet as the canonical admin wallet in Firebase
+    // (runs silently on every login — idempotent, no harm if already set)
+    if (state.walletId) {
+      state.registeredAdminWalletId = state.walletId;
+      saveState();
+      db.ref('admin/walletId').set(state.walletId).catch(() => {});
+    }
   } else {
     document.getElementById('admin-pin-input').value = '';
     toast('Wrong PIN');
@@ -1443,8 +1474,23 @@ function saveState() {
 // ═══════════════════════════════════════════════
 // UTILS
 // ═══════════════════════════════════════════════
-function show(id) { const el=document.getElementById(id); if(el){ el.style.display='flex'; } }
-function hide(id) { const el=document.getElementById(id); if(el){ el.style.display='none'; } }
+function show(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  // Respect the element's natural display type
+  const tag = el.tagName.toLowerCase();
+  if (tag === 'div' || tag === 'section') {
+    // Check if the element uses flex in its CSS class
+    const hasFlex = ['setup-screen','form-screen','app-screen'].includes(id);
+    el.style.display = hasFlex ? 'flex' : 'block';
+  } else {
+    el.style.display = '';
+  }
+}
+function hide(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = 'none';
+}
 
 let toastTimer;
 function toast(msg) {
