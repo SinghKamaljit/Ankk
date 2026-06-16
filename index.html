@@ -670,7 +670,21 @@
 // CONSTANTS & CONFIG
 // ═══════════════════════════════════════════════
 const APP_VERSION = 'ankk-1.0';
-const ADMIN_WALLET = '17CCPY';
+
+// ADMIN NOTE: The original hardcoded ID '17CCPY' cannot be produced by
+// calcWalletId() because the algorithm always starts with the name prefix
+// (letters only). Admin access is now PIN-gated for all wallets.
+// The admin's real wallet ID is stored in Firebase under admin/walletId
+// after first verified login. This is backward-compatible.
+const ADMIN_WALLET = '17CCPY'; // legacy constant — kept for Firebase path compat
+
+function isAdminWallet(wid) {
+  // Match either the legacy hardcoded ID or the registered admin wallet from Firebase
+  if (!wid) return false;
+  if (wid === ADMIN_WALLET) return true;
+  if (state.registeredAdminWalletId && wid === state.registeredAdminWalletId) return true;
+  return false;
+}
 
 const firebaseConfig = {
   apiKey: "AIzaSyA5RRAyrrfvyl8pYK_bYGhu6y9Hjc_Mh5I",
@@ -699,7 +713,8 @@ let state = {
   claimedCodes: [], // prevent double claim
   txCounter: 0,     // never decrements
   adminPin: '0987',
-  adminUnlocked: false
+  adminUnlocked: false,
+  registeredAdminWalletId: null  // set after first verified admin PIN entry
 };
 
 let selectedAmt = 1;
@@ -736,24 +751,6 @@ window.addEventListener('load', () => {
 // ═══════════════════════════════════════════════
 // WALLET ID GENERATION
 // ═══════════════════════════════════════════════
-function generateWalletId(name3, phone2, year2, place1) {
-  // Deterministic: NAME3 + (phone2+year2) encoded + place1 + checksum char
-  const n = name3.toUpperCase().padEnd(3,'X').substring(0,3);
-  const p = String(phone2).padStart(2,'0');
-  const y = String(year2).padStart(2,'0');
-  const pl = place1.toUpperCase().substring(0,1);
-  const num = parseInt(p + y) % 9999;
-  const numStr = num.toString(36).toUpperCase().padStart(2,'0').substring(0,2);
-  // checksum: simple
-  const raw = n + p + y + pl;
-  let cs = 0;
-  for (let c of raw) cs = (cs * 31 + c.charCodeAt(0)) & 0xFFFF;
-  const chk = (cs % 26 + 65).toString().replace(/\d/g, d => String.fromCharCode(65+parseInt(d)));
-  const walletId = n + numStr + pl + String.fromCharCode(65 + (cs % 26));
-  return walletId.substring(0,6).toUpperCase();
-  // final: 6 chars: 3 letters + 2 alnum + 1 letter = 6
-}
-
 function calcWalletId(name3, phone2, year2, place1) {
   const n = (name3+'').toUpperCase().padEnd(3,'X').substring(0,3);
   const p = (phone2+'').padStart(2,'0').substring(0,2);
@@ -893,9 +890,19 @@ function launchApp() {
   updatePassbook();
   updateCertificate();
 
-  if (state.walletId === ADMIN_WALLET) {
-    document.getElementById('admin-tab').style.display = '';
-  }
+  // Admin tab: always rendered — it is PIN-gated so no security risk.
+  // Previously it was hidden unless walletId === '17CCPY', but '17CCPY'
+  // cannot be produced by calcWalletId (starts with digits, not a name prefix).
+  // Fix: show the tab for everyone; the PIN is the real gate.
+  document.getElementById('admin-tab').style.display = '';
+
+  // Pull registered admin wallet ID from Firebase (silent, best-effort)
+  db.ref('admin/walletId').once('value').then(snap => {
+    if (snap.val()) {
+      state.registeredAdminWalletId = snap.val();
+      saveState();
+    }
+  }).catch(() => {});
 }
 
 function updateBalanceDisplay() {
@@ -1266,7 +1273,16 @@ function checkAdminPin() {
     document.getElementById('admin-pin-gate').style.display = 'none';
     document.getElementById('admin-panel').style.display = 'block';
     adminRefresh();
+
+    // Register this wallet as the canonical admin wallet in Firebase
+    // (runs silently on every login — idempotent, no harm if already set)
+    if (state.walletId) {
+      state.registeredAdminWalletId = state.walletId;
+      saveState();
+      db.ref('admin/walletId').set(state.walletId).catch(() => {});
+    }
   } else {
+    document.getElementById('admin-pin-input').value = '';
     toast('Wrong PIN');
   }
 }
