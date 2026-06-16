@@ -943,11 +943,13 @@ function shiftDecode(str) {
 }
 
 function generateVoucherCode(amount, senderWid, recipientFirstChar, counter) {
-  // Structure: Prefix(1) + Date(4) + Nonce(1) + Amount(4) + SenderSig(2) + RecipFirst(1) + Counter(2) = 15 + 1 space = displayed in 4-4-4-4
+  // Structure (16 chars total):
+  // Prefix(1) + Date(4) + Nonce(1) + AmtEnc(4) + SenderSig(2) + RecipFirst(1) + CounterEnc(2) + Checksum(1)
+  // = 1+4+1+4+2+1+2+1 = 16
   const prefix = 'A';
   const now = new Date();
-  const dateStr = (now.getFullYear()%100).toString().padStart(2,'0') +
-                  (now.getMonth()+1).toString().padStart(2,'0');
+  const dateStr = (now.getFullYear() % 100).toString().padStart(2,'0') +
+                  (now.getMonth() + 1).toString().padStart(2,'0');
   const nonce = Math.floor(Math.random() * 16).toString(16).toUpperCase();
   const amtEnc = shiftEncode(amount, 4);
   // sender sig: first 2 chars of walletId, shifted
@@ -956,25 +958,43 @@ function generateVoucherCode(amount, senderWid, recipientFirstChar, counter) {
     return CHARS[(i + SHIFT) % CHARS.length];
   }).join('');
   const rcFirst = (recipientFirstChar || 'Z').toUpperCase().substring(0,1);
-  const counterEnc = shiftEncode(counter % (36*36), 2);
+  const counterEnc = shiftEncode(counter % (36 * 36), 2);
 
-  const raw = prefix + dateStr + nonce + amtEnc + sig + rcFirst + counterEnc;
-  // Format as 4-4-4-4
+  // 15-char body
+  const body = prefix + dateStr + nonce + amtEnc + sig + rcFirst + counterEnc;
+
+  // Checksum: sum of CHARS indices of body chars, mod 36, shifted, = 1 char
+  let cs = 0;
+  for (const c of body) cs += CHARS.indexOf(c);
+  const checksum = CHARS[(cs % CHARS.length + SHIFT) % CHARS.length];
+
+  const raw = body + checksum; // exactly 16 chars
+  // Display as XXXX XXXX XXXX XXXX
   return raw.substring(0,4) + ' ' + raw.substring(4,8) + ' ' + raw.substring(8,12) + ' ' + raw.substring(12,16);
 }
 
 function parseVoucherCode(code) {
   const raw = code.replace(/\s/g, '').toUpperCase();
   if (raw.length !== 16) return null;
-  const prefix = raw[0];
-  const dateStr = raw.substring(1,5);
-  const nonce = raw[5];
-  const amtEnc = raw.substring(6,10);
-  const sig = raw.substring(10,12);
-  const rcFirst = raw[12];
-  const counterEnc = raw.substring(13,15);
-  // decode amount
-  const amount = shiftDecode(amtEnc);
+
+  // Positions matching generator exactly:
+  const prefix     = raw[0];           // 1
+  const dateStr    = raw.substring(1,5);  // 4
+  const nonce      = raw[5];           // 1
+  const amtEnc     = raw.substring(6,10); // 4
+  const sig        = raw.substring(10,12);// 2
+  const rcFirst    = raw[12];          // 1
+  const counterEnc = raw.substring(13,15);// 2
+  const checksum   = raw[15];          // 1  ← was missing before
+
+  // Verify checksum
+  const body = raw.substring(0,15);
+  let cs = 0;
+  for (const c of body) cs += CHARS.indexOf(c);
+  const expectedChecksum = CHARS[(cs % CHARS.length + SHIFT) % CHARS.length];
+  if (checksum !== expectedChecksum) return null;
+
+  const amount  = shiftDecode(amtEnc);
   const counter = shiftDecode(counterEnc);
   return { prefix, dateStr, nonce, sig, rcFirst, amount, counter, raw };
 }
