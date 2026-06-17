@@ -1000,14 +1000,18 @@ function generateCode() {
   const recipFirst = recip ? recip[0].toUpperCase() : 'Z';
   const code = generateVoucherCode(amount, state.walletId, recipFirst, state.txCounter);
 
-  // Log OUT entry
+  // Log OUT entry — store rich fields for network ledger
   state.ledger.unshift({
     type: 'OUT',
     amount,
     note: recip ? 'To ' + recip + (reason ? ' — ' + reason : '') : reason || 'Recognition given',
+    recipientName: recip || '',
+    recipientWid: recipId || '',
+    reason: reason || '',
     date: new Date().toISOString(),
     code: code.replace(/\s/g,''),
-    synced: false
+    synced: false,
+    netPushed: false
   });
   if (state.ledger.length > 100) state.ledger = state.ledger.slice(0,100);
   updateBalanceDisplay();
@@ -1102,8 +1106,19 @@ function claimCode() {
   saveState();
   pushToFirebase(state.walletId);
 
-  // Also push claimed code to Firebase to prevent cross-device double-claim
-  db.ref('claimed/' + raw).set({ by: state.walletId, date: new Date().toISOString() });
+  // Push rich network ledger record — receiver knows amount, date, and own details;
+  // sender wallet sig is embedded in the code (first 2 chars of walletId shifted).
+  // We reconstruct sender wallet sig for display. Full sender details come from wallets node.
+  const claimDate = new Date().toISOString();
+  db.ref('claimed/' + raw).set({ by: state.walletId, date: claimDate });
+  db.ref('network').push({
+    code: raw,
+    amount: parsed.amount,
+    receiverWid: state.walletId,
+    receiverName: state.fullName || '',
+    receiverPhone: state.phone || '',
+    date: claimDate
+  });
 
   result.className = 'claim-result ok';
   result.textContent = '+' + parsed.amount + ' Ankk' + (parsed.amount>1?'s':'') + ' claimed!' + warn;
@@ -1356,16 +1371,54 @@ function adminRefresh() {
     const entries = [];
     snap.forEach(child => entries.unshift(child.val()));
     const el = document.getElementById('net-ledger-list');
-    if (!entries.length) { el.innerHTML = '<div class="empty-state">No network transactions.</div>'; return; }
-    el.innerHTML = entries.map(e=>`
-      <div class="net-entry">
+    if (!entries.length) { el.innerHTML = '<div class="empty-state">No network transactions yet.</div>'; return; }
+    el.innerHTML = entries.map(e => {
+      const dateStr = e.date ? new Date(e.date).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) : '—';
+      // Determine if this is a GIVE record (has senderWid) or CLAIM record (has receiverWid only)
+      const isClaim = !e.senderWid && e.receiverWid;
+      const isGive  = !!e.senderWid;
+      const isMint  = e.from === 'MINT';
+
+      let fromLine, toLine, reasonLine;
+      if (isMint) {
+        fromLine = '<span style="color:var(--gold)">MINT (Admin)</span>';
+        toLine   = e.to ? 'To: ' + e.to : '';
+        reasonLine = e.note || '';
+      } else if (isGive) {
+        fromLine = e.senderName
+          ? e.senderName + ' <span style="color:var(--dim)">(' + e.senderWid + ')</span>'
+          : e.senderWid || '—';
+        const sPhone = e.senderPhone ? ' · 📞 ' + e.senderPhone : '';
+        fromLine += '<span style="color:var(--dim);font-size:11px">' + sPhone + '</span>';
+        toLine   = e.recipientName
+          ? 'To: ' + e.recipientName + (e.recipientWid ? ' <span style="color:var(--dim)">(' + e.recipientWid + ')</span>' : '')
+          : (e.recipientWid ? 'To WID: ' + e.recipientWid : 'Recipient not linked');
+        reasonLine = e.reason || '';
+      } else if (isClaim) {
+        fromLine = '— (code claimed)';
+        toLine   = e.receiverName
+          ? 'Receiver: ' + e.receiverName + ' <span style="color:var(--dim)">(' + e.receiverWid + ')</span>'
+          : 'Receiver WID: ' + (e.receiverWid || '—');
+        const rPhone = e.receiverPhone ? ' · 📞 ' + e.receiverPhone : '';
+        toLine += '<span style="color:var(--dim);font-size:11px">' + rPhone + '</span>';
+        reasonLine = '';
+      } else {
+        // Legacy record format
+        fromLine = e.from || '—';
+        toLine   = 'To: ' + (e.to || '—');
+        reasonLine = e.note || '';
+      }
+
+      return \`<div class="net-entry">
         <div class="net-top">
-          <div class="net-name">${e.from} → ${e.to}</div>
-          <div class="net-amt">${e.amount}</div>
+          <div class="net-name">\${fromLine}</div>
+          <div class="net-amt">+\${e.amount}</div>
         </div>
-        <div class="net-meta">${e.note||'—'} · ${new Date(e.date).toLocaleDateString('en-IN')}</div>
-      </div>
-    `).join('');
+        <div class="net-meta">\${toLine}</div>
+        \${reasonLine ? '<div class="net-meta" style="color:var(--text2)">' + reasonLine + '</div>' : ''}
+        <div class="net-meta">\${dateStr}</div>
+      </div>\`;
+    }).join('');
     toast('✓ Loaded ' + entries.length + ' transactions');
   }).catch(() => toast('Could not load network ledger'));
 }
@@ -1396,16 +1449,26 @@ function pushToFirebase(wid, showConfirm) {
     if (showConfirm) toast('Sync failed — check connection');
   });
 
-  // Push network ledger entries for OUT
+  // Push network ledger entries for OUT — rich record with sender details
+  let anyNewPush = false;
   for (const e of state.ledger) {
     if (e.type === 'OUT' && !e.netPushed) {
       db.ref('network').push({
-        from: wid, to: e.note||'?', amount: e.amount,
-        note: e.note, date: e.date
+        code: e.code || '',
+        amount: e.amount,
+        senderWid: wid,
+        senderName: state.fullName || '',
+        senderPhone: state.phone || '',
+        recipientName: e.recipientName || '',
+        recipientWid: e.recipientWid || '',
+        reason: e.reason || e.note || '',
+        date: e.date
       });
       e.netPushed = true;
+      anyNewPush = true;
     }
   }
+  if (anyNewPush) saveState();
 }
 
 function autoSync() {
