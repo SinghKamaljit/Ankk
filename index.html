@@ -671,19 +671,11 @@
 // ═══════════════════════════════════════════════
 const APP_VERSION = 'ankk-1.0';
 
-// ADMIN NOTE: The original hardcoded ID '17CCPY' cannot be produced by
-// calcWalletId() because the algorithm always starts with the name prefix
-// (letters only). Admin access is now PIN-gated for all wallets.
-// The admin's real wallet ID is stored in Firebase under admin/walletId
-// after first verified login. This is backward-compatible.
-const ADMIN_WALLET = '17CCPY'; // legacy constant — kept for Firebase path compat
+// Admin wallet is hardwired — only KAM6ZF sees the Admin tab.
+const ADMIN_WALLET = 'KAM6ZF';
 
 function isAdminWallet(wid) {
-  // Match either the legacy hardcoded ID or the registered admin wallet from Firebase
-  if (!wid) return false;
-  if (wid === ADMIN_WALLET) return true;
-  if (state.registeredAdminWalletId && wid === state.registeredAdminWalletId) return true;
-  return false;
+  return wid === ADMIN_WALLET;
 }
 
 const firebaseConfig = {
@@ -713,8 +705,7 @@ let state = {
   claimedCodes: [], // prevent double claim
   txCounter: 0,     // never decrements
   adminPin: '0987',
-  adminUnlocked: false,
-  registeredAdminWalletId: null  // set after first verified admin PIN entry
+  adminUnlocked: false
 };
 
 let selectedAmt = 1;
@@ -890,19 +881,12 @@ function launchApp() {
   updatePassbook();
   updateCertificate();
 
-  // Admin tab: always rendered — it is PIN-gated so no security risk.
-  // Previously it was hidden unless walletId === '17CCPY', but '17CCPY'
-  // cannot be produced by calcWalletId (starts with digits, not a name prefix).
-  // Fix: show the tab for everyone; the PIN is the real gate.
-  document.getElementById('admin-tab').style.display = '';
-
-  // Pull registered admin wallet ID from Firebase (silent, best-effort)
-  db.ref('admin/walletId').once('value').then(snap => {
-    if (snap.val()) {
-      state.registeredAdminWalletId = snap.val();
-      saveState();
-    }
-  }).catch(() => {});
+  // Admin tab: only visible to the hardwired admin wallet KAM6ZF
+  if (isAdminWallet(state.walletId)) {
+    document.getElementById('admin-tab').style.display = '';
+  } else {
+    document.getElementById('admin-tab').style.display = 'none';
+  }
 }
 
 function updateBalanceDisplay() {
@@ -943,7 +927,7 @@ function shiftDecode(str) {
 }
 
 function generateVoucherCode(amount, senderWid, recipientFirstChar, counter) {
-  // Structure: Prefix(1) + Date(4) + Nonce(1) + Amount(4) + SenderSig(2) + RecipFirst(1) + Counter(2) = 15 + 1 space = displayed in 4-4-4-4
+  // Structure: Prefix(1) + Date(4) + Nonce(1) + Amount(4) + SenderSig(2) + RecipFirst(1) + Counter(2) + Check(1) = 16
   const prefix = 'A';
   const now = new Date();
   const dateStr = (now.getFullYear()%100).toString().padStart(2,'0') +
@@ -958,8 +942,13 @@ function generateVoucherCode(amount, senderWid, recipientFirstChar, counter) {
   const rcFirst = (recipientFirstChar || 'Z').toUpperCase().substring(0,1);
   const counterEnc = shiftEncode(counter % (36*36), 2);
 
-  const raw = prefix + dateStr + nonce + amtEnc + sig + rcFirst + counterEnc;
-  // Format as 4-4-4-4
+  const base = prefix + dateStr + nonce + amtEnc + sig + rcFirst + counterEnc; // 15 chars
+  // Checksum: sum of char codes mod 36, encoded as single CHARS character
+  let csum = 0;
+  for (let c of base) csum += c.charCodeAt(0);
+  const check = CHARS[csum % CHARS.length];
+  const raw = base + check; // 16 chars
+  // Format as XXXX XXXX XXXX XXXX
   return raw.substring(0,4) + ' ' + raw.substring(4,8) + ' ' + raw.substring(8,12) + ' ' + raw.substring(12,16);
 }
 
@@ -1273,14 +1262,6 @@ function checkAdminPin() {
     document.getElementById('admin-pin-gate').style.display = 'none';
     document.getElementById('admin-panel').style.display = 'block';
     adminRefresh();
-
-    // Register this wallet as the canonical admin wallet in Firebase
-    // (runs silently on every login — idempotent, no harm if already set)
-    if (state.walletId) {
-      state.registeredAdminWalletId = state.walletId;
-      saveState();
-      db.ref('admin/walletId').set(state.walletId).catch(() => {});
-    }
   } else {
     document.getElementById('admin-pin-input').value = '';
     toast('Wrong PIN');
@@ -1346,7 +1327,9 @@ function showMasterCode() {
 }
 
 function adminRefresh() {
-  // Top 100
+  toast('Loading…');
+
+  // Top 100 holders
   db.ref('wallets').once('value').then(snap => {
     const all = [];
     snap.forEach(child => {
@@ -1366,9 +1349,9 @@ function adminRefresh() {
         <div class="admin-val">${w.balance}</div>
       </div>
     `).join('');
-  });
+  }).catch(() => toast('Could not load wallets'));
 
-  // Network ledger
+  // Network ledger — last 500
   db.ref('network').limitToLast(500).once('value').then(snap => {
     const entries = [];
     snap.forEach(child => entries.unshift(child.val()));
@@ -1383,14 +1366,14 @@ function adminRefresh() {
         <div class="net-meta">${e.note||'—'} · ${new Date(e.date).toLocaleDateString('en-IN')}</div>
       </div>
     `).join('');
-  });
-  toast('Refreshed');
+    toast('✓ Loaded ' + entries.length + ' transactions');
+  }).catch(() => toast('Could not load network ledger'));
 }
 
 // ═══════════════════════════════════════════════
 // SYNC
 // ═══════════════════════════════════════════════
-function pushToFirebase(wid) {
+function pushToFirebase(wid, showConfirm) {
   if (!wid) return;
   updateBalanceDisplay();
   db.ref('wallets/' + wid).set({
@@ -1405,9 +1388,13 @@ function pushToFirebase(wid) {
   }).then(() => {
     state.ledger.forEach(e => e.synced = true);
     localStorage.setItem('ankk_last_sync', Date.now());
-    document.getElementById('sync-status-text').textContent = 'Synced ' + new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    const timeStr = new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    document.getElementById('sync-status-text').textContent = 'Synced ' + timeStr;
     saveState();
-  }).catch(() => {});
+    if (showConfirm) toast('✓ Synced at ' + timeStr);
+  }).catch(() => {
+    if (showConfirm) toast('Sync failed — check connection');
+  });
 
   // Push network ledger entries for OUT
   for (const e of state.ledger) {
@@ -1433,8 +1420,8 @@ function autoSync() {
 }
 
 function manualSync() {
-  pushToFirebase(state.walletId);
-  toast('Syncing...');
+  toast('Syncing…');
+  pushToFirebase(state.walletId, true);
 }
 
 // ═══════════════════════════════════════════════
