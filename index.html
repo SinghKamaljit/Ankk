@@ -1409,15 +1409,15 @@ function adminRefresh() {
         reasonLine = e.note || '';
       }
 
-      return \`<div class="net-entry">
+      return `<div class="net-entry">
         <div class="net-top">
-          <div class="net-name">\${fromLine}</div>
-          <div class="net-amt">+\${e.amount}</div>
+          <div class="net-name">${fromLine}</div>
+          <div class="net-amt">+${e.amount}</div>
         </div>
-        <div class="net-meta">\${toLine}</div>
-        \${reasonLine ? '<div class="net-meta" style="color:var(--text2)">' + reasonLine + '</div>' : ''}
-        <div class="net-meta">\${dateStr}</div>
-      </div>\`;
+        <div class="net-meta">${toLine}</div>
+        ${reasonLine ? '<div class="net-meta" style="color:var(--text2)">' + reasonLine + '</div>' : ''}
+        <div class="net-meta">${dateStr}</div>
+      </div>`;
     }).join('');
     toast('✓ Loaded ' + entries.length + ' transactions');
   }).catch(() => toast('Could not load network ledger'));
