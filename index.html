@@ -1344,18 +1344,18 @@ function showMasterCode() {
 function adminRefresh() {
   toast('Loading…');
 
-  // Top 100 holders
+  // ── Top 100 holders ──
   db.ref('wallets').once('value').then(snap => {
     const all = [];
     snap.forEach(child => {
       const d = child.val();
       if (d && d.balance) all.push({ wid: child.key, name: d.fullName||'Unknown', balance: d.balance, phone: d.phone||'—' });
     });
-    all.sort((a,b)=>b.balance-a.balance);
-    const top = all.slice(0,100);
+    all.sort((a,b) => b.balance - a.balance);
+    const top = all.slice(0, 100);
     const el = document.getElementById('top100-list');
     if (!top.length) { el.innerHTML = '<div class="empty-state">No wallets found.</div>'; return; }
-    el.innerHTML = top.map((w,i)=>`
+    el.innerHTML = top.map((w,i) => `
       <div class="admin-row">
         <div>
           <div class="admin-name">${i+1}. ${w.name}</div>
@@ -1366,61 +1366,85 @@ function adminRefresh() {
     `).join('');
   }).catch(() => toast('Could not load wallets'));
 
-  // Network ledger — last 500
-  db.ref('network').limitToLast(500).once('value').then(snap => {
-    const entries = [];
-    snap.forEach(child => entries.unshift(child.val()));
-    const el = document.getElementById('net-ledger-list');
-    if (!entries.length) { el.innerHTML = '<div class="empty-state">No network transactions yet.</div>'; return; }
-    el.innerHTML = entries.map(e => {
-      const dateStr = e.date ? new Date(e.date).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) : '—';
-      // Determine if this is a GIVE record (has senderWid) or CLAIM record (has receiverWid only)
-      const isClaim = !e.senderWid && e.receiverWid;
-      const isGive  = !!e.senderWid;
-      const isMint  = e.from === 'MINT';
+  // ── Network ledger — last 500, newest first ──
+  db.ref('network')
+    .orderByChild('date')
+    .limitToLast(500)
+    .once('value')
+    .then(snap => {
+      const entries = [];
+      snap.forEach(child => {
+        const e = child.val();
+        entries.push({
+          ...e,
+          amount:  e.amount  || 0,
+          date:    e.date    || new Date().toISOString(),
+          type:    e.type    || (e.from === 'MINT' ? 'MINT' : e.senderWid ? 'GIVE' : 'CLAIM')
+        });
+      });
+      entries.reverse(); // Firebase returns oldest-first; we want newest-first
 
-      let fromLine, toLine, reasonLine;
-      if (isMint) {
-        fromLine = '<span style="color:var(--gold)">MINT (Admin)</span>';
-        toLine   = e.to ? 'To: ' + e.to : '';
-        reasonLine = e.note || '';
-      } else if (isGive) {
-        fromLine = e.senderName
-          ? e.senderName + ' <span style="color:var(--dim)">(' + e.senderWid + ')</span>'
-          : e.senderWid || '—';
-        const sPhone = e.senderPhone ? ' · 📞 ' + e.senderPhone : '';
-        fromLine += '<span style="color:var(--dim);font-size:11px">' + sPhone + '</span>';
-        toLine   = e.recipientName
-          ? 'To: ' + e.recipientName + (e.recipientWid ? ' <span style="color:var(--dim)">(' + e.recipientWid + ')</span>' : '')
-          : (e.recipientWid ? 'To WID: ' + e.recipientWid : 'Recipient not linked');
-        reasonLine = e.reason || '';
-      } else if (isClaim) {
-        fromLine = '— (code claimed)';
-        toLine   = e.receiverName
-          ? 'Receiver: ' + e.receiverName + ' <span style="color:var(--dim)">(' + e.receiverWid + ')</span>'
-          : 'Receiver WID: ' + (e.receiverWid || '—');
-        const rPhone = e.receiverPhone ? ' · 📞 ' + e.receiverPhone : '';
-        toLine += '<span style="color:var(--dim);font-size:11px">' + rPhone + '</span>';
-        reasonLine = '';
-      } else {
-        // Legacy record format
-        fromLine = e.from || '—';
-        toLine   = 'To: ' + (e.to || '—');
-        reasonLine = e.note || '';
+      const el = document.getElementById('net-ledger-list');
+      if (!entries.length) {
+        el.innerHTML = '<div class="empty-state">No network transactions yet.</div>';
+        return;
       }
 
-      return `<div class="net-entry">
-        <div class="net-top">
-          <div class="net-name">${fromLine}</div>
-          <div class="net-amt">+${e.amount}</div>
-        </div>
-        <div class="net-meta">${toLine}</div>
-        ${reasonLine ? '<div class="net-meta" style="color:var(--text2)">' + reasonLine + '</div>' : ''}
-        <div class="net-meta">${dateStr}</div>
-      </div>`;
-    }).join('');
-    toast('✓ Loaded ' + entries.length + ' transactions');
-  }).catch(() => toast('Could not load network ledger'));
+      el.innerHTML = entries.map(e => {
+        const dateStr = e.date
+          ? new Date(e.date).toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'})
+          : '—';
+
+        const isMint  = e.from === 'MINT';
+        const isGive  = !!e.senderWid;
+        const isClaim = !e.senderWid && !!e.receiverWid;
+
+        let fromLine, toLine, reasonLine;
+        if (isMint) {
+          fromLine   = '<span style="color:var(--gold)">MINT (Admin)</span>';
+          toLine     = e.to ? 'To: ' + e.to : '';
+          reasonLine = e.note || '';
+        } else if (isGive) {
+          const sPhone = e.senderPhone ? ' · 📞 ' + e.senderPhone : '';
+          fromLine = (e.senderName || e.senderWid || '—')
+            + ' <span style="color:var(--dim)">(' + (e.senderWid || '') + ')</span>'
+            + '<span style="color:var(--dim);font-size:11px">' + sPhone + '</span>';
+          toLine = e.recipientName
+            ? 'To: ' + e.recipientName + (e.recipientWid ? ' <span style="color:var(--dim)">(' + e.recipientWid + ')</span>' : '')
+            : (e.recipientWid ? 'To WID: ' + e.recipientWid : 'Recipient not linked');
+          reasonLine = e.reason || '';
+        } else if (isClaim) {
+          const rPhone = e.receiverPhone ? ' · 📞 ' + e.receiverPhone : '';
+          fromLine  = '— (code claimed)';
+          toLine    = (e.receiverName ? 'Receiver: ' + e.receiverName : 'Receiver WID: ' + (e.receiverWid || '—'))
+            + (e.receiverWid ? ' <span style="color:var(--dim)">(' + e.receiverWid + ')</span>' : '')
+            + '<span style="color:var(--dim);font-size:11px">' + rPhone + '</span>';
+          reasonLine = '';
+        } else {
+          // Legacy record format
+          fromLine   = e.from || '—';
+          toLine     = 'To: ' + (e.to || '—');
+          reasonLine = e.note || '';
+        }
+
+        return `<div class="net-entry">
+          <div class="net-top">
+            <div class="net-name">${fromLine}</div>
+            <div class="net-amt">+${e.amount}</div>
+          </div>
+          <div class="net-meta">${toLine}</div>
+          ${reasonLine ? '<div class="net-meta" style="color:var(--text2)">' + reasonLine + '</div>' : ''}
+          <div class="net-meta">${dateStr}</div>
+        </div>`;
+      }).join('');
+
+      toast('✓ ' + entries.length + ' transactions loaded');
+    })
+    .catch(err => {
+      document.getElementById('net-ledger-list').innerHTML =
+        '<div class="empty-state">Could not load ledger.<br><small style="color:var(--dim)">'
+        + (err && err.message ? err.message : 'Check connection') + '</small></div>';
+    });
 }
 
 // ═══════════════════════════════════════════════
@@ -1508,9 +1532,13 @@ function switchTab(name) {
   document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id==='tab-'+name));
   if (name==='passbook') updatePassbook();
   if (name==='certificate') updateCertificate();
-  if (name==='admin' && !state.adminUnlocked) {
-    document.getElementById('admin-pin-gate').style.display = '';
-    document.getElementById('admin-panel').style.display = 'none';
+  if (name==='admin') {
+    if (!state.adminUnlocked) {
+      document.getElementById('admin-pin-gate').style.display = '';
+      document.getElementById('admin-panel').style.display = 'none';
+    } else {
+      adminRefresh(); // auto-refresh every time admin tab is opened while unlocked
+    }
   }
 }
 
